@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Mudae Album</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <header class="header">
+      <div class="wrap topbar">
+        <div class="brand">
+          <div class="title">Mudae Album</div>
+          <div class="pill"><span id="count">0</span> <span id="countLabel">stickers</span></div>
+        </div>
+
+        <div class="actions">
+          <select id="lang" class="select" aria-label="Language">
+            <option value="en">EN</option>
+            <option value="pt-BR">PT-BR</option>
+          </select>
+
+          <button id="pasteBtn" class="btn" type="button"></button>
+
+          <input id="q" class="search" type="search" autocomplete="off" />
+
+          <button id="exportAlbum" class="btn" type="button"></button>
+
+          <span id="status" class="status" aria-live="polite"></span>
+        </div>
+      </div>
+    </header>
+
+    <main class="wrap wrapFull">
+      <section class="panel" id="emptyState">
+        <div class="panelTitle" id="emptyTitle">Load your list</div>
+        <div class="panelText" id="emptyText">
+          Paste your <code>mudae.txt</code> (format: <code>Name - URL</code>), then export a shareable ZIP with <code>index.html</code> + <code>images/</code>.
+        </div>
+      </section>
+
+      <div class="grid" id="grid"></div>
+    </main>
+
+    <div class="modalOverlay" id="pasteModal" hidden>
+      <div class="modal" role="dialog" aria-modal="true" aria-labelledby="pasteTitle">
+        <div class="modalHeader">
+          <div class="modalTitle" id="pasteTitle">Paste your list</div>
+          <button class="iconBtn" id="pasteClose" type="button" aria-label="Close">×</button>
+        </div>
+        <div class="modalBody">
+          <div class="modalHelp" id="pasteHelp">
+            Paste the contents of <code>mudae.txt</code> here (format: <code>Name - URL</code>).
+          </div>
+          <textarea id="pasteText" class="textarea" spellcheck="false"></textarea>
+        </div>
+        <div class="modalFooter">
+          <button class="btn" id="pasteCancel" type="button"></button>
+          <button class="btn primary" id="pasteLoad" type="button"></button>
+        </div>
+      </div>
+    </div>
+
+    <script src="./app.js"></script>
+  </body>
+</html>
+
