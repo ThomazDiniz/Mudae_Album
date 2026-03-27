@@ -1,5 +1,5 @@
 /* Pure HTML/CSS/JS album.
-   - Load mudae.txt via file picker
+   - Import text copied from Mudae
    - Parse "Name - URL"
    - Export a shareable zip (index.html + images/)
    - Keep architecture open for future sources/resolvers
@@ -45,7 +45,10 @@ const I18N = {
       'Paste the contents of <code>mudae.txt</code> here (format: <code>Name - URL</code>). Example:<br/><code>Diane - https://mudae.net/uploads/3900740/iy1DIZM~QFuV9Ta.png</code>',
     pasteCancel: "Cancel",
     pasteLoad: "Load list",
+    loadMore: "Load more",
     singleDownload: "download",
+    googleSearchTitle: "Search on Google (text/images)",
+    googleSearchLabel: "search",
     statusLoaded: (n) => `Loaded ${n} stickers`,
     statusResolving: (i, n) => `Resolving ${i}/${n}...`,
     statusFetching: (i, n) => `Fetching ${i}/${n}...`,
@@ -74,7 +77,10 @@ const I18N = {
       'Cole aqui o conteúdo do <code>mudae.txt</code> (formato: <code>Nome - URL</code>). Exemplo:<br/><code>Diane - https://mudae.net/uploads/3900740/iy1DIZM~QFuV9Ta.png</code>',
     pasteCancel: "Cancelar",
     pasteLoad: "Carregar lista",
+    loadMore: "Carregar mais",
     singleDownload: "baixar",
+    googleSearchTitle: "Pesquisar no Google (texto/imagens)",
+    googleSearchLabel: "buscar",
     statusLoaded: (n) => `${n} figurinhas carregadas`,
     statusResolving: (i, n) => `Resolvendo ${i}/${n}...`,
     statusDone: "Pronto",
@@ -220,7 +226,7 @@ async function resolveImageUrl(url) {
 }
 
 async function fetchText(url) {
-  const resp = await fetch(url, { cache: "no-store", referrerPolicy: "no-referrer" });
+  const resp = await fetch(url, { cache: "force-cache", referrerPolicy: "no-referrer" });
   if (!resp.ok) throw new Error(`HTTP ${resp.status} fetching ${url}`);
   return await resp.text();
 }
@@ -242,6 +248,43 @@ function escapeRegExp(s) {
 // ---- App state ----
 
 let stickers = [];
+const IMAGE_BLOB_CACHE = new Map(); // url -> Blob (LRU-ish)
+const IMAGE_OBJECT_URL_CACHE = new Map(); // url -> objectURL
+const IMAGE_INFLIGHT_CACHE = new Map(); // url -> Promise<Blob>
+const IMAGE_CACHE_MAX_ITEMS = 300;
+const THUMB_FETCH_CONCURRENCY = 6;
+const RESOLVE_CONCURRENCY = 8;
+const EXPORT_FETCH_CONCURRENCY = 6;
+const SEARCH_DEBOUNCE_MS = 120;
+const GRID_BATCH_SIZE = 240;
+
+let thumbObserver = null;
+let thumbQueue = [];
+let thumbActive = 0;
+let currentRenderLimit = GRID_BATCH_SIZE;
+let lastFilterKey = "";
+
+function debounce(fn, waitMs) {
+  let timer = null;
+  return (...args) => {
+    if (timer) clearTimeout(timer);
+    timer = setTimeout(() => fn(...args), waitMs);
+  };
+}
+
+async function mapWithConcurrency(items, limit, worker) {
+  const out = new Array(items.length);
+  let nextIndex = 0;
+  const runners = new Array(Math.min(limit, items.length)).fill(0).map(async () => {
+    while (true) {
+      const idx = nextIndex++;
+      if (idx >= items.length) return;
+      out[idx] = await worker(items[idx], idx);
+    }
+  });
+  await Promise.all(runners);
+  return out;
+}
 
 function setStatus(msg) {
   els.status.textContent = msg || "";
@@ -251,8 +294,98 @@ function normalizeQuery(q) {
   return (q || "").trim().toLowerCase();
 }
 
-function getStickerImageUrl(s) {
-  return s.resolvedUrl || s.sourceUrl;
+function putImageBlobCache(url, blob) {
+  if (!url || !blob) return;
+  if (IMAGE_BLOB_CACHE.has(url)) IMAGE_BLOB_CACHE.delete(url);
+  IMAGE_BLOB_CACHE.set(url, blob);
+  if (IMAGE_BLOB_CACHE.size > IMAGE_CACHE_MAX_ITEMS) {
+    const oldestUrl = IMAGE_BLOB_CACHE.keys().next().value;
+    IMAGE_BLOB_CACHE.delete(oldestUrl);
+    const oldObj = IMAGE_OBJECT_URL_CACHE.get(oldestUrl);
+    if (oldObj) {
+      URL.revokeObjectURL(oldObj);
+      IMAGE_OBJECT_URL_CACHE.delete(oldestUrl);
+    }
+  }
+}
+
+function getObjectUrlForBlob(url, blob) {
+  if (IMAGE_OBJECT_URL_CACHE.has(url)) return IMAGE_OBJECT_URL_CACHE.get(url);
+  const obj = URL.createObjectURL(blob);
+  IMAGE_OBJECT_URL_CACHE.set(url, obj);
+  return obj;
+}
+
+function clearObjectUrlCache() {
+  for (const obj of IMAGE_OBJECT_URL_CACHE.values()) {
+    URL.revokeObjectURL(obj);
+  }
+  IMAGE_OBJECT_URL_CACHE.clear();
+}
+
+function clearAllImageCaches() {
+  clearObjectUrlCache();
+  IMAGE_BLOB_CACHE.clear();
+  IMAGE_INFLIGHT_CACHE.clear();
+  thumbQueue = [];
+  thumbActive = 0;
+}
+
+function ensureThumbObserver() {
+  if (thumbObserver || typeof IntersectionObserver === "undefined") return;
+  thumbObserver = new IntersectionObserver(
+    (entries) => {
+      for (const entry of entries) {
+        if (!entry.isIntersecting) continue;
+        const el = entry.target;
+        thumbObserver.unobserve(el);
+        enqueueThumbHydration(el);
+      }
+    },
+    { root: null, rootMargin: "300px 0px", threshold: 0.01 }
+  );
+}
+
+function enqueueThumbHydration(thumbEl) {
+  if (!thumbEl || thumbEl.dataset.hydrated === "1" || thumbEl.dataset.enqueued === "1") return;
+  thumbEl.dataset.enqueued = "1";
+  thumbQueue.push(thumbEl);
+  pumpThumbQueue();
+}
+
+function pumpThumbQueue() {
+  while (thumbActive < THUMB_FETCH_CONCURRENCY && thumbQueue.length > 0) {
+    const el = thumbQueue.shift();
+    thumbActive++;
+    hydrateThumbElement(el)
+      .catch(() => {})
+      .finally(() => {
+        thumbActive--;
+        pumpThumbQueue();
+      });
+  }
+}
+
+async function hydrateThumbElement(thumbEl) {
+  if (!thumbEl || thumbEl.dataset.hydrated === "1") return;
+  const imgUrl = thumbEl.dataset.imgUrl || "";
+  const imgAlt = thumbEl.dataset.imgAlt || "";
+  if (!imgUrl) return;
+  try {
+    const blob = await fetchBlob(imgUrl);
+    const img = document.createElement("img");
+    img.loading = "lazy";
+    img.alt = imgAlt;
+    img.referrerPolicy = "no-referrer";
+    img.src = getObjectUrlForBlob(imgUrl, blob);
+    thumbEl.innerHTML = "";
+    thumbEl.appendChild(img);
+    thumbEl.dataset.hydrated = "1";
+  } catch {
+    // keep placeholder
+  } finally {
+    thumbEl.dataset.enqueued = "0";
+  }
 }
 
 // ---- Rendering ----
@@ -264,9 +397,15 @@ function escHtml(str) {
 async function renderFiltered() {
   const term = normalizeQuery(els.q.value);
   const parts = term ? term.split(/\s+/g).filter(Boolean) : [];
+  const filterKey = parts.join("|");
+  if (filterKey !== lastFilterKey) {
+    lastFilterKey = filterKey;
+    currentRenderLimit = GRID_BATCH_SIZE;
+  }
   const items = !parts.length
     ? stickers
     : stickers.filter((s) => parts.every((p) => (s.nameLc || "").includes(p)));
+  const visible = items.slice(0, currentRenderLimit);
 
   els.count.textContent = String(items.length);
   els.countLabel.textContent = t().countLabel;
@@ -277,11 +416,11 @@ async function renderFiltered() {
   const frag = document.createDocumentFragment();
 
   // Render quickly with placeholders; hydrate thumbs async
-  for (const s of items) {
+  for (const s of visible) {
     const card = document.createElement("div");
     card.className = "card";
     card.innerHTML = `
-      <div class="thumb">
+      <div class="thumb" data-img-url="${escHtml(s.resolvedUrl || s.sourceUrl)}" data-img-alt="${escHtml(s.name)}" data-hydrated="0">
         <div class="ph">...</div>
       </div>
       <div class="meta">
@@ -289,27 +428,38 @@ async function renderFiltered() {
         <div class="small">
           <a class="link" href="${escHtml(s.resolvedUrl || s.sourceUrl)}" target="_blank" rel="noreferrer">src</a>
           <a class="link" href="${escHtml(s.resolvedUrl || s.sourceUrl)}" download="${escHtml(s.name)}">${t().singleDownload}</a>
+          <a class="link" href="https://www.google.com/search?q=${encodeURIComponent(s.name)}" target="_blank" rel="noreferrer" title="${escHtml(t().googleSearchTitle)}">🔎 ${escHtml(t().googleSearchLabel)}</a>
         </div>
       </div>
     `;
     frag.appendChild(card);
-
-    // hydrate image async
-    (async () => {
-      try {
-        const thumb = card.querySelector(".thumb");
-        const imgUrl = getStickerImageUrl(s);
-        const img = document.createElement("img");
-        img.loading = "lazy";
-        img.alt = s.name;
-        img.referrerPolicy = "no-referrer";
-        img.src = imgUrl;
-        thumb.innerHTML = "";
-        thumb.appendChild(img);
-      } catch {
-        // keep placeholder
+    const thumb = card.querySelector(".thumb");
+    if (thumb) {
+      if (thumbObserver) {
+        thumbObserver.observe(thumb);
+      } else {
+        // Fallback for browsers without IntersectionObserver
+        enqueueThumbHydration(thumb);
       }
-    })();
+    }
+  }
+
+  if (visible.length < items.length) {
+    const moreWrap = document.createElement("div");
+    moreWrap.className = "card";
+    moreWrap.innerHTML = `
+      <div class="meta" style="min-height:120px;justify-content:center;align-items:center;">
+        <button class="btn" type="button" data-load-more="1">${escHtml(t().loadMore)} (${visible.length}/${items.length})</button>
+      </div>
+    `;
+    const btn = moreWrap.querySelector("[data-load-more]");
+    if (btn) {
+      btn.addEventListener("click", () => {
+        currentRenderLimit += GRID_BATCH_SIZE;
+        renderFiltered().catch(() => {});
+      });
+    }
+    frag.appendChild(moreWrap);
   }
 
   els.grid.appendChild(frag);
@@ -328,14 +478,37 @@ function slugifyFilename(name) {
   return (s || "sticker").slice(0, 80);
 }
 
-function sleep(ms) {
-  return new Promise((r) => setTimeout(r, ms));
+function shortStableHash(input) {
+  // FNV-1a 32-bit, sufficient for filename disambiguation.
+  let h = 0x811c9dc5;
+  const str = String(input || "");
+  for (let i = 0; i < str.length; i++) {
+    h ^= str.charCodeAt(i);
+    h = Math.imul(h, 0x01000193);
+  }
+  return (h >>> 0).toString(36);
 }
 
 async function fetchBlob(url) {
-  const resp = await fetch(url, { cache: "no-store", referrerPolicy: "no-referrer" });
-  if (!resp.ok) throw new Error(`HTTP ${resp.status} ${url}`);
-  return await resp.blob();
+  const cached = IMAGE_BLOB_CACHE.get(url);
+  if (cached) return cached;
+  const inFlight = IMAGE_INFLIGHT_CACHE.get(url);
+  if (inFlight) return inFlight;
+
+  const p = (async () => {
+    const resp = await fetch(url, { cache: "force-cache", referrerPolicy: "no-referrer" });
+    if (!resp.ok) throw new Error(`HTTP ${resp.status} ${url}`);
+    const blob = await resp.blob();
+    putImageBlobCache(url, blob);
+    return blob;
+  })();
+
+  IMAGE_INFLIGHT_CACHE.set(url, p);
+  try {
+    return await p;
+  } finally {
+    IMAGE_INFLIGHT_CACHE.delete(url);
+  }
 }
 
 // Minimal ZIP builder (store-only) to keep it dependency-free.
@@ -363,23 +536,23 @@ function concat(parts) {
   for (const p of parts) { out.set(p, off); off += p.length; }
   return out;
 }
-async function buildZip(files) {
+async function buildZipBlob(files) {
   const encoder = new TextEncoder();
-  const localHeaders = [];
+  const localParts = [];
   const centralHeaders = [];
   let offset = 0;
   for (const f of files) {
     const nameBytes = encoder.encode(f.name);
-    const data = new Uint8Array(f.data);
+    const data = f.data instanceof Uint8Array ? f.data : new Uint8Array(f.data);
     const crc = crc32(data);
     const size = data.length >>> 0;
-    const local = concat([
+    const localHeader = concat([
       u32(0x04034b50), u16(20), u16(0), u16(0), u16(0), u16(0),
       u32(crc), u32(size), u32(size),
       u16(nameBytes.length), u16(0),
-      nameBytes, data,
+      nameBytes,
     ]);
-    localHeaders.push(local);
+    localParts.push(localHeader, data);
     const central = concat([
       u32(0x02014b50), u16(20), u16(20), u16(0), u16(0), u16(0), u16(0),
       u32(crc), u32(size), u32(size),
@@ -388,18 +561,17 @@ async function buildZip(files) {
       nameBytes,
     ]);
     centralHeaders.push(central);
-    offset += local.length;
+    offset += localHeader.length + data.length;
   }
   const centralStart = offset;
   const centralDir = concat(centralHeaders);
-  offset += centralDir.length;
   const end = concat([
     u32(0x06054b50), u16(0), u16(0),
     u16(files.length), u16(files.length),
     u32(centralDir.length), u32(centralStart),
     u16(0),
   ]);
-  return concat([...localHeaders, centralDir, end]);
+  return new Blob([...localParts, centralDir, end], { type: "application/zip" });
 }
 
 function buildExportIndexHtml(title, stickersMeta) {
@@ -462,8 +634,8 @@ function buildExportIndexHtml(title, stickersMeta) {
   <script>
     const STICKERS = ${payload};
     const I18N = {
-      "en": { countLabel:"stickers", search:"Search...", download:"download" },
-      "pt-BR": { countLabel:"figurinhas", search:"Buscar...", download:"baixar" }
+      "en": { countLabel:"stickers", search:"Search...", download:"download", googleSearchTitle:"Search on Google (text/images)", googleSearchLabel:"search" },
+      "pt-BR": { countLabel:"figurinhas", search:"Buscar...", download:"baixar", googleSearchTitle:"Pesquisar no Google (texto/imagens)", googleSearchLabel:"buscar" }
     };
     function detectDefaultLang(){
       const saved = localStorage.getItem("mudae_album_lang");
@@ -506,6 +678,7 @@ function buildExportIndexHtml(title, stickersMeta) {
             <div class="small">
               <span>\${esc(s.ext||"")}</span>
               <a href="\${esc(s.local_path)}" download="\${esc(s.filename)}">\${I18N[LANG].download}</a>
+              <a href="https://www.google.com/search?q=\${encodeURIComponent(s.name)}" target="_blank" rel="noreferrer" title="\${I18N[LANG].googleSearchTitle}">🔎 \${I18N[LANG].googleSearchLabel}</a>
             </div>
           </div>\`;
         frag.appendChild(d);
@@ -533,10 +706,9 @@ async function exportAlbumZip() {
     const stickerMeta = [];
     let ok = 0;
     let fail = 0;
-
-    for (let i = 0; i < stickers.length; i++) {
+    const usedFilenames = new Set();
+    await mapWithConcurrency(stickers, EXPORT_FETCH_CONCURRENCY, async (s, i) => {
       setStatus(t().statusFetching(i + 1, stickers.length));
-      const s = stickers[i];
       const url = s.resolvedUrl || s.sourceUrl;
       try {
         const blob = await fetchBlob(url);
@@ -548,7 +720,16 @@ async function exportAlbumZip() {
             return m ? `.${m[1]}` : ".img";
           } catch { return ".img"; }
         })();
-        const filename = `${slugifyFilename(s.name)}${ext}`;
+        const base = slugifyFilename(s.name);
+        const suffix = shortStableHash(`${s.name}\n${s.sourceUrl}`);
+        let filename = `${base}__${suffix}${ext}`;
+        // Guard against extremely rare hash collisions
+        let n = 1;
+        while (usedFilenames.has(filename)) {
+          filename = `${base}__${suffix}-${n}${ext}`;
+          n++;
+        }
+        usedFilenames.add(filename);
         const localPath = `images/${filename}`;
         files.push({ name: localPath, data: ab });
         stickerMeta.push({
@@ -563,7 +744,7 @@ async function exportAlbumZip() {
         fail++;
         console.warn("Export fetch failed", s, e);
       }
-    }
+    });
 
     if (ok === 0 && fail > 0) {
       setStatus(t().errorExportFailed);
@@ -577,8 +758,7 @@ async function exportAlbumZip() {
     files.push({ name: "album.json", data: new TextEncoder().encode(JSON.stringify({ stickers: stickerMeta }, null, 2)).buffer });
 
     setStatus(t().statusZipping);
-    const zipBytes = await buildZip(files.map(f => ({ name: f.name, data: f.data })));
-    const zipBlob = new Blob([zipBytes], { type: "application/zip" });
+    const zipBlob = await buildZipBlob(files);
     const a = document.createElement("a");
     a.href = URL.createObjectURL(zipBlob);
     a.download = "mudae-album-export.zip";
@@ -595,9 +775,8 @@ async function exportAlbumZip() {
 
 async function resolveAll() {
   let resolveFailures = 0;
-  for (let i = 0; i < stickers.length; i++) {
+  await mapWithConcurrency(stickers, RESOLVE_CONCURRENCY, async (s, i) => {
     setStatus(t().statusResolving(i + 1, stickers.length));
-    const s = stickers[i];
     try {
       s.resolvedUrl = await resolveImageUrl(s.sourceUrl);
     } catch (e) {
@@ -605,7 +784,7 @@ async function resolveAll() {
       console.warn("Resolve failed", s, e);
       s.resolvedUrl = s.sourceUrl;
     }
-  }
+  });
   if (resolveFailures) console.warn("Resolve failures:", resolveFailures);
   return resolveFailures;
 }
@@ -613,6 +792,8 @@ async function resolveAll() {
 // ---- File loading ----
 
 async function loadFromText(text) {
+  // New import should release any previously created object URLs and blobs.
+  clearAllImageCaches();
   const source = new MudaeTxtSource(text || "");
   const loaded = await source.load();
 
@@ -624,6 +805,8 @@ async function loadFromText(text) {
     resolvedUrl: null,
   }));
 
+  currentRenderLimit = GRID_BATCH_SIZE;
+  lastFilterKey = "";
   setStatus(t().statusLoaded(stickers.length));
   await renderFiltered();
   setTimeout(() => setStatus(""), 2500);
@@ -644,8 +827,12 @@ function closePasteModal() {
 
 // ---- UI events ----
 
+const debouncedRenderFiltered = debounce(() => {
+  renderFiltered().catch(() => {});
+}, SEARCH_DEBOUNCE_MS);
+
 els.lang.addEventListener("change", () => setLang(els.lang.value));
-els.q.addEventListener("input", () => renderFiltered());
+els.q.addEventListener("input", debouncedRenderFiltered);
 els.exportAlbum.addEventListener("click", () => exportAlbumZip());
 els.pasteBtn.addEventListener("click", () => openPasteModal());
 
@@ -674,6 +861,7 @@ els.pasteLoad.addEventListener("click", async () => {
 });
 
 // Init
+ensureThumbObserver();
 setLang(LANG);
 // Auto-restore last pasted text (if any) on reload
 (() => {
