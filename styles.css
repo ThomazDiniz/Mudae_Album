@@ -205,7 +205,7 @@ input[type="file"]{ display:none; }
   flex-direction:column;
   justify-content:center;
   align-items:center;
-  gap:8px;
+  gap:4px;
 }
 .cardTitle{
   font-weight:800;
@@ -217,7 +217,8 @@ input[type="file"]{ display:none; }
   text-align:center;
 }
 .cardFooter .nameLink{ text-align:center; }
-.cardFooter .iconBar{ display:flex; gap:6px; align-items:center; justify-content:center; flex-wrap:wrap; }
+.cardFooter .iconBar{ display:flex; gap:4px; align-items:center; justify-content:center; flex-wrap:wrap; }
+.cardProgress{ color:var(--muted); font-size:12px; margin:0 4px 0 0; }
 .cardNav{
   position:absolute;
   top:50%;

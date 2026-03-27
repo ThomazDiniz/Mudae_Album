@@ -225,7 +225,7 @@ async function renderCard() {
 
   const paneHtml = (pos, s, url, isCenter) => {
     if (!s || !url) return `<div class="cardPane ${pos}"></div>`;
-    const prog = isCenter ? `<span style="color:var(--muted);font-size:12px;margin-right:6px;">${cardIndex + 1} / ${items.length}</span>` : "";
+    const prog = isCenter ? `<span class="cardProgress">${cardIndex + 1} / ${items.length}</span>` : "";
     return `
       <div class="cardPane ${pos}">
         <div class="cardHero">
@@ -236,7 +236,7 @@ async function renderCard() {
           <div class="iconBar">
             ${prog}
             <a class="iconLink" data-role="download" href="${escHtml(url)}" download="${escHtml(s.name)}" title="${escHtml(t().downloadTitle)}">💾</a>
-            <a class="iconLink" href="https://www.google.com/search?q=${encodeURIComponent(s.name)}" target="_blank" rel="noreferrer" title="${escHtml(t().googleSearchTitle)}">🔎</a>
+            <a class="iconLink" href="${googleTextAndImageUrl(s.name, s.resolvedUrl || s.sourceUrl)}" target="_blank" rel="noreferrer" title="${escHtml(t().googleSearchTitle)}">🔎</a>
           </div>
         </div>
       </div>
@@ -479,6 +479,16 @@ function normalizeQuery(q) {
   return (q || "").trim().toLowerCase();
 }
 
+function googleTextAndImageUrl(name, imageUrl) {
+  const q = encodeURIComponent(String(name || ""));
+  const u = String(imageUrl || "");
+  if (u.startsWith("http://") || u.startsWith("https://")) {
+    const img = encodeURIComponent(u);
+    return `https://www.google.com/searchbyimage?image_url=${img}&q=${q}`;
+  }
+  return `https://www.google.com/search?tbm=isch&q=${q}`;
+}
+
 async function resolveForDisplay(url) {
   const u = String(url || "").trim();
   if (!u) return u;
@@ -529,7 +539,7 @@ async function renderFiltered() {
           <a class="nameLink" data-role="open" href="${escHtml(s.resolvedUrl || s.sourceUrl)}" target="_blank" rel="noreferrer" title="${escHtml(s.name)}">${escHtml(s.name)}</a>
           <div class="iconBar">
             <a class="iconLink" data-role="download" href="${escHtml(s.resolvedUrl || s.sourceUrl)}" download="${escHtml(s.name)}" title="${escHtml(t().downloadTitle)}">💾</a>
-            <a class="iconLink" href="https://www.google.com/search?q=${encodeURIComponent(s.name)}" target="_blank" rel="noreferrer" title="${escHtml(t().googleSearchTitle)}">🔎</a>
+            <a class="iconLink" href="${googleTextAndImageUrl(s.name, s.resolvedUrl || s.sourceUrl)}" target="_blank" rel="noreferrer" title="${escHtml(t().googleSearchTitle)}">🔎</a>
           </div>
         </div>
       </div>
@@ -777,7 +787,8 @@ function buildExportIndexHtml(title, stickersMeta) {
     .nameRow{display:flex;gap:8px;align-items:flex-start;}
     .nameLink{flex:1;min-width:0;font-size:13px;font-weight:650;line-height:1.2;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;min-height:32px;color:var(--text);text-decoration:none;}
     .nameLink:hover{text-decoration:underline;}
-    .iconBar{display:flex;gap:6px;align-items:center;justify-content:center;flex-wrap:wrap;flex:0 0 auto;}
+    .iconBar{display:flex;gap:4px;align-items:center;justify-content:center;flex-wrap:wrap;flex:0 0 auto;}
+    .cardProgress{color:var(--muted);font-size:12px;margin:0 4px 0 0;}
     .iconLink{width:28px;height:28px;display:inline-grid;place-items:center;border-radius:10px;border:1px solid rgba(36,50,74,.9);background:rgba(17,24,39,.75);color:var(--text);text-decoration:none;font-size:14px;line-height:1;}
     .iconLink:hover{border-color:rgba(96,165,250,.8);}
 
@@ -803,7 +814,7 @@ function buildExportIndexHtml(title, stickersMeta) {
     .cardStage.anim-prev .cardPane.is-off-left{transform:translateX(-94%) rotateY(26deg) scale(0.86);opacity:.55;filter:blur(0.2px);}
     .cardHero{position:relative;overflow:hidden;background:rgba(0,0,0,.25);}
     .cardHero img{width:100%;height:100%;object-fit:contain;display:block;background:rgba(0,0,0,.35);}
-    .cardFooter{padding:12px 12px 14px;border-top:1px solid rgba(36,50,74,.6);display:flex;flex-direction:column;justify-content:center;align-items:center;gap:8px;}
+    .cardFooter{padding:12px 12px 14px;border-top:1px solid rgba(36,50,74,.6);display:flex;flex-direction:column;justify-content:center;align-items:center;gap:4px;}
     .cardTitle{font-weight:800;letter-spacing:.2px;font-size:16px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:center;}
     .cardNav{position:absolute;top:50%;transform:translateY(-50%);width:44px;height:44px;border-radius:14px;border:1px solid rgba(36,50,74,.9);background:rgba(17,24,39,.65);color:var(--text);cursor:pointer;z-index:5;}
     .cardNav.left{left:10px;}
@@ -867,6 +878,15 @@ function buildExportIndexHtml(title, stickersMeta) {
     const count = document.getElementById("count");
     const countLabel = document.getElementById("countLabel");
     function esc(s){return String(s||"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\\"":"&quot;","'":"&#39;"}[c]));}
+    function googleTextAndImageUrl(name, imageUrl){
+      const q = encodeURIComponent(String(name||""));
+      const u = String(imageUrl||"");
+      if(u.startsWith("http://") || u.startsWith("https://")){
+        const img = encodeURIComponent(u);
+        return "https://www.google.com/searchbyimage?image_url="+img+"&q="+q;
+      }
+      return "https://www.google.com/search?tbm=isch&q="+q;
+    }
     let viewMode = localStorage.getItem("mudae_album_view") || "grid";
     let cardIndex = 0;
 
@@ -910,7 +930,7 @@ function buildExportIndexHtml(title, stickersMeta) {
       const right = cardIndex<items.length-1 ? items[cardIndex+1] : null;
       function pane(pos, s){
         if(!s) return '<div class="cardPane '+pos+'"></div>';
-        const prog = pos==="is-center" ? ('<span style="color:var(--muted);font-size:12px;margin-right:6px;">'+(cardIndex+1)+' / '+items.length+'</span>') : '';
+        const prog = pos==="is-center" ? ('<span class="cardProgress">'+(cardIndex+1)+' / '+items.length+'</span>') : '';
         return \`
           <div class="cardPane \${pos}">
             <div class="cardHero">
@@ -921,7 +941,7 @@ function buildExportIndexHtml(title, stickersMeta) {
               <div class="iconBar">
                 \${prog}
                 <a class="iconLink" href="\${esc(s.local_path)}" download="\${esc(s.filename)}" title="\${I18N[LANG].downloadTitle}">💾</a>
-                <a class="iconLink" href="https://www.google.com/search?q=\${encodeURIComponent(s.name)}" target="_blank" rel="noreferrer" title="\${I18N[LANG].googleSearchTitle}">🔎</a>
+                <a class="iconLink" href="\${googleTextAndImageUrl(s.name, s.resolved_url || s.source_url)}" target="_blank" rel="noreferrer" title="\${I18N[LANG].googleSearchTitle}">🔎</a>
               </div>
             </div>
           </div>\`;
@@ -980,7 +1000,7 @@ function buildExportIndexHtml(title, stickersMeta) {
               <a class="nameLink" href="\${esc(s.local_path)}" target="_blank" rel="noreferrer" title="\${esc(s.name)}">\${esc(s.name)}</a>
               <div class="iconBar">
                 <a class="iconLink" href="\${esc(s.local_path)}" download="\${esc(s.filename)}" title="\${I18N[LANG].downloadTitle}">💾</a>
-                <a class="iconLink" href="https://www.google.com/search?q=\${encodeURIComponent(s.name)}" target="_blank" rel="noreferrer" title="\${I18N[LANG].googleSearchTitle}">🔎</a>
+                <a class="iconLink" href="\${googleTextAndImageUrl(s.name, s.resolved_url || s.source_url)}" target="_blank" rel="noreferrer" title="\${I18N[LANG].googleSearchTitle}">🔎</a>
               </div>
             </div>
           </div>\`;
@@ -1075,6 +1095,8 @@ async function exportAlbumZip() {
         stickerMeta.push({
           name: s.name,
           name_lc: s.nameLc,
+          source_url: s.sourceUrl,
+          resolved_url: url,
           filename,
           local_path: localPath,
           ext,
