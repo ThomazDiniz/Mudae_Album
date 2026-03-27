@@ -478,6 +478,7 @@ async function renderFiltered() {
 
   els.grid.innerHTML = "";
   const frag = document.createDocumentFragment();
+  const thumbsToObserve = [];
 
   // Render quickly with placeholders; hydrate thumbs async
   for (const s of visible) {
@@ -499,12 +500,8 @@ async function renderFiltered() {
     frag.appendChild(card);
     const thumb = card.querySelector(".thumb");
     if (thumb) {
-      if (thumbObserver) {
-        thumbObserver.observe(thumb);
-      } else {
-        // Fallback for browsers without IntersectionObserver
-        enqueueThumbHydration(thumb);
-      }
+      // Observe only after DOM insertion (some browsers don't trigger IO for detached nodes).
+      thumbsToObserve.push(thumb);
     }
   }
 
@@ -516,6 +513,12 @@ async function renderFiltered() {
   frag.appendChild(loadMoreSentinel);
 
   els.grid.appendChild(frag);
+
+  // Start thumb hydration after insertion into the DOM.
+  for (const thumb of thumbsToObserve) {
+    if (thumbObserver) thumbObserver.observe(thumb);
+    else enqueueThumbHydration(thumb);
+  }
 
   // Observe the sentinel and load more when near bottom.
   if (!loadMoreObserver && typeof IntersectionObserver !== "undefined") {
