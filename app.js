@@ -731,6 +731,7 @@ function buildExportIndexHtml(title, stickersMeta) {
     .cardProgress{color:var(--muted);font-size:12px;margin:0 4px 0 0;}
     .iconLink{width:28px;height:28px;display:inline-grid;place-items:center;border-radius:10px;border:1px solid rgba(36,50,74,.9);background:rgba(17,24,39,.75);color:var(--text);text-decoration:none;font-size:14px;line-height:1;}
     .iconLink:hover{border-color:rgba(96,165,250,.8);}
+    .isRemote{border-color:rgba(250,204,21,.95)!important;box-shadow:0 0 0 2px rgba(250,204,21,.20) inset;}
 
     /* Card (tinder) view */
     .cardView{margin-top:14px;}
@@ -852,8 +853,9 @@ function buildExportIndexHtml(title, stickersMeta) {
       function pane(pos, s, idx){
         if(!s) return '<div class="cardPane '+pos+'"></div>';
         const prog = '<span class="cardProgress">'+(idx+1)+' / '+items.length+'</span>';
+        const remoteClass = s.is_remote ? " isRemote" : "";
         return \`
-          <div class="cardPane \${pos}">
+          <div class="cardPane \${pos}\${remoteClass}">
             <div class="cardHero">
               <img loading="eager" referrerpolicy="no-referrer" alt="\${esc(s.name)}" src="\${esc(s.local_path)}" />
             </div>
@@ -912,7 +914,7 @@ function buildExportIndexHtml(title, stickersMeta) {
       for(let i=0;i<items.length;i++){
         const s = items[i];
         const d = document.createElement("div");
-        d.className = "card";
+        d.className = "card" + (s.is_remote ? " isRemote" : "");
         d.innerHTML = \`
           <a class="thumbLink" data-role="open-card" data-idx="\${i}" href="\${esc(s.local_path)}" target="_blank" rel="noreferrer">
             <div class="thumb"><img loading="lazy" src="\${esc(s.local_path)}" alt="\${esc(s.name)}"/></div>
@@ -1067,6 +1069,29 @@ async function exportAlbumZip() {
       } catch (e) {
         fail++;
         failures.push({ name: s.name, url });
+        // Remote fallback: keep the entry in album.json and export index,
+        // but reference the remote URL instead of images/.
+        // This allows the album to remain usable even for hosts that block automated downloads.
+        const ext = (() => {
+          try {
+            const p = new URL(url).pathname.toLowerCase();
+            const m = p.match(/\.(png|jpg|jpeg|gif|webp)$/);
+            return m ? `.${m[1]}` : ".img";
+          } catch { return ".img"; }
+        })();
+        const base = slugifyFilename(s.name);
+        const suffix = shortStableHash(`${s.name}\n${s.sourceUrl}`);
+        const filename = `${base}__${suffix}${ext}`;
+        stickerMeta.push({
+          name: s.name,
+          name_lc: s.nameLc,
+          source_url: s.sourceUrl,
+          resolved_url: url,
+          filename,
+          local_path: url,
+          ext,
+          is_remote: true,
+        });
         console.warn("Export fetch failed", s, e);
       }
     });
