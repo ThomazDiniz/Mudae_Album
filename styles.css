@@ -84,6 +84,7 @@ input[type="file"]{ display:none; }
 .status{
   position:fixed;
   left:50%;
+  top:auto;
   bottom:18px;
   transform:translateX(-50%);
   z-index:999;
