@@ -251,6 +251,8 @@ let stickers = [];
 const IMAGE_BLOB_CACHE = new Map(); // url -> Blob (LRU-ish)
 const IMAGE_OBJECT_URL_CACHE = new Map(); // url -> objectURL
 const IMAGE_INFLIGHT_CACHE = new Map(); // url -> Promise<Blob>
+const RESOLVED_URL_CACHE = new Map(); // url -> resolvedUrl
+const RESOLVE_INFLIGHT_CACHE = new Map(); // url -> Promise<string>
 const IMAGE_CACHE_MAX_ITEMS = 300;
 const THUMB_FETCH_CONCURRENCY = 6;
 const RESOLVE_CONCURRENCY = 8;
@@ -265,6 +267,8 @@ let currentRenderLimit = GRID_BATCH_SIZE;
 let lastFilterKey = "";
 let loadMoreObserver = null;
 let loadMoreSentinel = null;
+let currentFilteredTotal = 0;
+let isLoadingMore = false;
 
 function debounce(fn, waitMs) {
   let timer = null;
@@ -329,6 +333,8 @@ function clearAllImageCaches() {
   clearObjectUrlCache();
   IMAGE_BLOB_CACHE.clear();
   IMAGE_INFLIGHT_CACHE.clear();
+  RESOLVED_URL_CACHE.clear();
+  RESOLVE_INFLIGHT_CACHE.clear();
   thumbQueue = [];
   thumbActive = 0;
 }
@@ -370,10 +376,13 @@ function pumpThumbQueue() {
 
 async function hydrateThumbElement(thumbEl) {
   if (!thumbEl || thumbEl.dataset.hydrated === "1") return;
-  const imgUrl = thumbEl.dataset.imgUrl || "";
+  const originalUrl = thumbEl.dataset.imgUrl || "";
   const imgAlt = thumbEl.dataset.imgAlt || "";
-  if (!imgUrl) return;
+  if (!originalUrl) return;
   try {
+    const imgUrl = await resolveForDisplay(originalUrl);
+    // Keep the resolved url so later steps (like export) can reuse if needed.
+    thumbEl.dataset.imgUrl = imgUrl;
     const blob = await fetchBlob(imgUrl);
     const img = document.createElement("img");
     img.loading = "lazy";
@@ -388,6 +397,26 @@ async function hydrateThumbElement(thumbEl) {
   } finally {
     thumbEl.dataset.enqueued = "0";
   }
+}
+
+async function resolveForDisplay(url) {
+  const u = String(url || "").trim();
+  if (!u) return u;
+  const cached = RESOLVED_URL_CACHE.get(u);
+  if (cached) return cached;
+  const inFlight = RESOLVE_INFLIGHT_CACHE.get(u);
+  if (inFlight) return inFlight;
+  const p = (async () => {
+    try {
+      const resolved = await resolveImageUrl(u);
+      RESOLVED_URL_CACHE.set(u, resolved);
+      return resolved;
+    } finally {
+      RESOLVE_INFLIGHT_CACHE.delete(u);
+    }
+  })();
+  RESOLVE_INFLIGHT_CACHE.set(u, p);
+  return p;
 }
 
 // ---- Rendering ----
@@ -407,6 +436,7 @@ async function renderFiltered() {
   const items = !parts.length
     ? stickers
     : stickers.filter((s) => parts.every((p) => (s.nameLc || "").includes(p)));
+  currentFilteredTotal = items.length;
   const visible = items.slice(0, currentRenderLimit);
 
   els.count.textContent = String(items.length);
@@ -461,15 +491,23 @@ async function renderFiltered() {
       (entries) => {
         for (const entry of entries) {
           if (!entry.isIntersecting) continue;
+          if (isLoadingMore) continue;
           // Only load more if there is more to show.
-          if (currentRenderLimit < items.length) {
-            currentRenderLimit = Math.min(currentRenderLimit + GRID_BATCH_SIZE, items.length);
+          if (currentRenderLimit < currentFilteredTotal) {
+            isLoadingMore = true;
+            currentRenderLimit = Math.min(currentRenderLimit + GRID_BATCH_SIZE, currentFilteredTotal);
             // Render more, but avoid tight loops by deferring.
-            setTimeout(() => renderFiltered().catch(() => {}), 0);
+            setTimeout(() => {
+              renderFiltered()
+                .catch(() => {})
+                .finally(() => {
+                  isLoadingMore = false;
+                });
+            }, 0);
           }
         }
       },
-      { root: null, rootMargin: "1200px 0px", threshold: 0.01 }
+      { root: null, rootMargin: "800px 0px", threshold: 0 }
     );
   }
   if (loadMoreObserver) {
@@ -512,6 +550,10 @@ async function fetchBlob(url) {
     const resp = await fetch(url, { cache: "force-cache", referrerPolicy: "no-referrer" });
     if (!resp.ok) throw new Error(`HTTP ${resp.status} ${url}`);
     const blob = await resp.blob();
+    // Guard: if we accidentally fetched HTML (e.g., Imgur page), don't treat it as an image.
+    if (blob.type && !blob.type.startsWith("image/")) {
+      throw new Error(`Non-image content-type: ${blob.type} (${url})`);
+    }
     putImageBlobCache(url, blob);
     return blob;
   })();
@@ -820,6 +862,8 @@ async function loadFromText(text) {
 
   currentRenderLimit = GRID_BATCH_SIZE;
   lastFilterKey = "";
+  currentFilteredTotal = 0;
+  isLoadingMore = false;
   setStatus(t().statusLoaded(stickers.length));
   await renderFiltered();
   setTimeout(() => setStatus(""), 2500);
