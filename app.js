@@ -187,8 +187,14 @@ function clampCardIndex(items) {
 
 async function renderCard() {
   const items = getFilteredItems();
-  els.count.textContent = String(items.length);
-  els.countLabel.textContent = t().countLabel;
+  // Show progress in card view: "# / total"
+  if (items.length) {
+    els.count.textContent = `${cardIndex + 1}/${items.length}`;
+    els.countLabel.textContent = "";
+  } else {
+    els.count.textContent = "0/0";
+    els.countLabel.textContent = "";
+  }
   els.emptyState.style.display = stickers.length ? "none" : "block";
 
   if (!items.length) {
@@ -212,6 +218,7 @@ async function renderCard() {
     <div class="cardFooter">
       <a class="cardTitle nameLink" data-role="open" href="${escHtml(resolved)}" target="_blank" rel="noreferrer" title="${escHtml(s.name)}">${escHtml(s.name)}</a>
       <div class="iconBar">
+        <span style="color:var(--muted);font-size:12px;margin-right:6px;">${cardIndex + 1} / ${items.length}</span>
         <a class="iconLink" data-role="download" href="${escHtml(resolved)}" download="${escHtml(s.name)}" title="${escHtml(t().downloadTitle)}">💾</a>
         <a class="iconLink" href="https://www.google.com/search?q=${encodeURIComponent(s.name)}" target="_blank" rel="noreferrer" title="${escHtml(t().googleSearchTitle)}">🔎</a>
       </div>
@@ -817,8 +824,13 @@ function buildExportIndexHtml(title, stickersMeta) {
 
     function renderCard(){
       const items = getItems();
-      count.textContent = String(items.length);
-      countLabel.textContent = I18N[LANG].countLabel;
+      if(items.length){
+        count.textContent = (cardIndex + 1) + "/" + items.length;
+        countLabel.textContent = "";
+      }else{
+        count.textContent = "0/0";
+        countLabel.textContent = "";
+      }
       if(!items.length){ cardSurface.innerHTML=""; return; }
       if(cardIndex<0) cardIndex=0;
       if(cardIndex>=items.length) cardIndex=items.length-1;
@@ -834,6 +846,7 @@ function buildExportIndexHtml(title, stickersMeta) {
         <div class="cardFooter">
           <a class="cardTitle nameLink" href="\${esc(s.local_path)}" target="_blank" rel="noreferrer" title="\${esc(s.name)}">\${esc(s.name)}</a>
           <div class="iconBar">
+            <span style="color:var(--muted);font-size:12px;margin-right:6px;">\${cardIndex + 1} / \${items.length}</span>
             <a class="iconLink" href="\${esc(s.local_path)}" download="\${esc(s.filename)}" title="\${I18N[LANG].downloadTitle}">💾</a>
             <a class="iconLink" href="https://www.google.com/search?q=\${encodeURIComponent(s.name)}" target="_blank" rel="noreferrer" title="\${I18N[LANG].googleSearchTitle}">🔎</a>
           </div>
