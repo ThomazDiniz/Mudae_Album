@@ -151,6 +151,7 @@ function setLang(next) {
 let viewMode = "grid"; // "grid" | "card"
 let cardIndex = 0;
 let isCardAnimating = false;
+const CARD_ANIM_MS = 160;
 
 function updateViewToggleLabel() {
   if (!els.viewToggle) return;
@@ -282,7 +283,7 @@ function nextCard() {
         els.cardStage.classList.remove("anim-next");
         isCardAnimating = false;
       });
-  }, 260);
+  }, CARD_ANIM_MS);
 }
 
 function prevCard() {
@@ -300,7 +301,7 @@ function prevCard() {
         els.cardStage.classList.remove("anim-prev");
         isCardAnimating = false;
       });
-  }, 260);
+  }, CARD_ANIM_MS);
 }
 
 // ---- Source architecture (future-proof) ----
@@ -798,7 +799,7 @@ function buildExportIndexHtml(title, stickersMeta) {
     .cardStage{position:relative;height:calc(100vh - 120px);min-height:520px;max-width:90vw;margin:0 auto;border:1px solid rgba(36,50,74,.8);border-radius:14px;overflow:hidden;background:linear-gradient(180deg, rgba(17,24,39,.65), rgba(15,23,42,.65));box-shadow:0 10px 25px rgba(0,0,0,.25);}
     .cardSurface{position:absolute;inset:0;display:grid;grid-template-rows:1fr auto;}
     .cardDeck{position:absolute;inset:0;display:grid;place-items:center;perspective:1200px;}
-    .cardPane{position:absolute;width:min(680px,86%);height:100%;border-radius:14px;overflow:hidden;background:rgba(0,0,0,.12);border:1px solid rgba(36,50,74,.55);box-shadow:0 18px 60px rgba(0,0,0,.35);transform-style:preserve-3d;transition:transform 260ms ease, opacity 260ms ease, filter 260ms ease;display:grid;grid-template-rows:1fr auto;}
+    .cardPane{position:absolute;width:min(680px,86%);height:100%;border-radius:14px;overflow:hidden;background:rgba(0,0,0,.12);border:1px solid rgba(36,50,74,.55);box-shadow:0 18px 60px rgba(0,0,0,.35);transform-style:preserve-3d;transition:transform 160ms ease, opacity 160ms ease, filter 160ms ease;display:grid;grid-template-rows:1fr auto;}
     .cardPane.is-left{transform:translateX(-94%) rotateY(26deg) scale(0.86);opacity:.55;filter:blur(0.2px);}
     .cardPane.is-center{transform:translateX(0) rotateY(0) scale(1);opacity:1;}
     .cardPane.is-right{transform:translateX(94%) rotateY(-26deg) scale(0.86);opacity:.55;filter:blur(0.2px);}
@@ -913,6 +914,7 @@ function buildExportIndexHtml(title, stickersMeta) {
     }
 
     let isAnimating = false;
+    const CARD_ANIM_MS = 160;
     function renderCard(){
       const items = getItems();
       if(items.length){
@@ -1023,7 +1025,7 @@ function buildExportIndexHtml(title, stickersMeta) {
         renderCard();
         document.getElementById("cardStage").classList.remove("anim-next");
         isAnimating=false;
-      }, 260);
+      }, CARD_ANIM_MS);
     }
     function prevStep(){
       if(viewMode!=="card") return;
@@ -1037,7 +1039,7 @@ function buildExportIndexHtml(title, stickersMeta) {
         renderCard();
         document.getElementById("cardStage").classList.remove("anim-prev");
         isAnimating=false;
-      }, 260);
+      }, CARD_ANIM_MS);
     }
     cardPrev.addEventListener("click", prevStep);
     cardNext.addEventListener("click", nextStep);

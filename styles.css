@@ -147,7 +147,7 @@ input[type="file"]{ display:none; }
   border:1px solid rgba(36,50,74,.55);
   box-shadow: 0 18px 60px rgba(0,0,0,.35);
   transform-style: preserve-3d;
-  transition: transform 260ms ease, opacity 260ms ease, filter 260ms ease;
+  transition: transform 160ms ease, opacity 160ms ease, filter 160ms ease;
   display:grid;
   grid-template-rows: 1fr auto;
 }
