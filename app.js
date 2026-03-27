@@ -408,6 +408,7 @@ async function mapWithConcurrency(items, limit, worker) {
 }
 
 function setStatus(msg) {
+  if (!els.status) return;
   els.status.textContent = msg || "";
 }
 
