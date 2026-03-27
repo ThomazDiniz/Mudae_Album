@@ -156,13 +156,35 @@ class MudaeTxtSource extends StickerSource {
 }
 
 function parseMudaeLine(line) {
-  const sep = " - ";
-  const idx = line.indexOf(sep);
-  if (idx === -1) return null;
-  const name = line.slice(0, idx).trim();
-  const url = line.slice(idx + sep.length).trim();
-  if (!name || !url) return null;
-  return { name, sourceUrl: url };
+  let s = String(line || "").trim();
+  if (!s) return null;
+
+  // Common Discord paste prefixes (numbers, bullets, etc.)
+  s = s.replace(/^\s*(?:[-*•]+\s+|\d+\s*[.)]\s+|\[\d+\]\s+|#\d+\s+)+/g, "");
+
+  // Normalize fancy dashes to "-"
+  s = s.replace(/[–—]/g, "-");
+
+  // Prefer: "<name> - <url>"
+  const m = s.match(/^(.*?)\s+-\s+(https?:\/\/\S+)\s*$/i);
+  if (m) {
+    const name = (m[1] || "").trim();
+    const url = (m[2] || "").trim();
+    if (!name || !url) return null;
+    return { name, sourceUrl: url };
+  }
+
+  // Fallback: split at the first URL
+  const m2 = s.match(/^(.*?)\s+(https?:\/\/\S+)\s*$/i);
+  if (m2) {
+    const left = (m2[1] || "").trim();
+    const url = (m2[2] || "").trim();
+    const name = left.replace(/\s+-\s*$/g, "").trim();
+    if (!name || !url) return null;
+    return { name, sourceUrl: url };
+  }
+
+  return null;
 }
 
 // ---- Resolver architecture (direct images, imgur pages) ----
