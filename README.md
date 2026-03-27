@@ -2,10 +2,9 @@
 
 Generate a “sticker album” from your `mudae.txt` (`Name - URL` format) using **pure HTML + CSS + JS**, and download all images.
 
-### Requirements
+### Live page
 
-- A modern browser (recommended: Chromium-based)
-- Internet access while downloading images
+- [Open Mudae Album](https://thomazdiniz.github.io/Mudae_Album/)
 
 ### Usage
 
