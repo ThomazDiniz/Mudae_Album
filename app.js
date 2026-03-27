@@ -490,10 +490,9 @@ async function renderFiltered() {
         </div>
       </a>
       <div class="meta">
-        <a class="nameLink" data-role="open" href="${escHtml(s.resolvedUrl || s.sourceUrl)}" target="_blank" rel="noreferrer" title="${escHtml(s.name)}">${escHtml(s.name)}</a>
-        <div class="small">
-          <span></span>
-          <div style="display:flex;gap:6px;align-items:center;">
+        <div class="nameRow">
+          <a class="nameLink" data-role="open" href="${escHtml(s.resolvedUrl || s.sourceUrl)}" target="_blank" rel="noreferrer" title="${escHtml(s.name)}">${escHtml(s.name)}</a>
+          <div class="iconBar">
             <a class="iconLink" data-role="download" href="${escHtml(s.resolvedUrl || s.sourceUrl)}" download="${escHtml(s.name)}" title="${escHtml(t().downloadTitle)}">💾</a>
             <a class="iconLink" href="https://www.google.com/search?q=${encodeURIComponent(s.name)}" target="_blank" rel="noreferrer" title="${escHtml(t().googleSearchTitle)}">🔎</a>
           </div>
@@ -769,10 +768,9 @@ function buildExportIndexHtml(title, stickersMeta) {
             <div class="thumb"><img loading="lazy" src="\${esc(s.local_path)}" alt="\${esc(s.name)}"/></div>
           </a>
           <div class="meta">
-            <a class="nameLink" href="\${esc(s.local_path)}" target="_blank" rel="noreferrer" title="\${esc(s.name)}">\${esc(s.name)}</a>
-            <div class="small">
-              <span></span>
-              <div style="display:flex;gap:6px;align-items:center;">
+            <div class="nameRow">
+              <a class="nameLink" href="\${esc(s.local_path)}" target="_blank" rel="noreferrer" title="\${esc(s.name)}">\${esc(s.name)}</a>
+              <div class="iconBar">
                 <a class="iconLink" href="\${esc(s.local_path)}" download="\${esc(s.filename)}" title="\${I18N[LANG].downloadTitle}">💾</a>
                 <a class="iconLink" href="https://www.google.com/search?q=\${encodeURIComponent(s.name)}" target="_blank" rel="noreferrer" title="\${I18N[LANG].googleSearchTitle}">🔎</a>
               </div>
