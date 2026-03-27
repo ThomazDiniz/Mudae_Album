@@ -27,10 +27,6 @@ Example lines you can paste:
 - `1) Frieza - https://imgur.com/qwZS3EI.png`
 - `• Popeye the Sailor — https://mudae.net/uploads/9727729/j9ZfugH~iaF2EDp.png`
 
-### Language
-
-Use the **EN / PT-BR** selector in the top-right corner. The choice is saved in `localStorage`.
-
 ### Notes
 
 - `mudae.net/uploads/...` URLs are already direct image links.

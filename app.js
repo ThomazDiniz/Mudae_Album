@@ -8,7 +8,6 @@
 const $ = (id) => document.getElementById(id);
 
 const els = {
-  lang: $("lang"),
   pasteBtn: $("pasteBtn"),
   q: $("q"),
   count: $("count"),
@@ -35,101 +34,46 @@ const els = {
   pasteHelp: $("pasteHelp"),
 };
 
-const I18N = {
-  en: {
-    countLabel: "stickers",
-    searchPlaceholder: "Search...",
-    exportAlbum: "Export album (ZIP)",
-    exportAlbumTitle: "Creates a zip with index.html + images/ (shareable)",
-    viewGrid: "Grid",
-    viewCard: "Cards",
-    viewToggleTitle: "Switch view",
-    cardHint: "Click left/right to navigate",
-    pasteText: "Import",
-    pasteTextTitle: "Paste your mudae.txt content instead of selecting a file",
-    emptyTitle: "Load your list",
-    emptyText:
-      'Paste your <code>mudae.txt</code> (format: <code>Name - URL</code>), then export a shareable ZIP with <code>index.html</code> + <code>images/</code>.',
-    pasteTitle: "Paste your list",
-    pasteHelp:
-      'Paste the contents of <code>mudae.txt</code> here (format: <code>Name - URL</code>). Example:<br/><code>Diane - https://mudae.net/uploads/3900740/iy1DIZM~QFuV9Ta.png</code>',
-    pasteCancel: "Cancel",
-    pasteLoad: "Load list",
-    loadMore: "Load more",
-    googleSearchTitle: "Search on Google (text/images)",
-    downloadTitle: "Download image",
-    statusLoaded: (n) => `Loaded ${n} stickers`,
-    statusResolving: (i, n) => `Resolving ${i}/${n}...`,
-    statusFetching: (i, n) => `Fetching ${i}/${n}...`,
-    statusZipping: "Building ZIP...",
-    statusExporting: "Exporting album...",
-    statusDone: "Done",
-    statusDoneWith: (ok, fail) => `Done (${ok} ok, ${fail} failed)`,
-    errorExportFailed:
-      "Could not export the album ZIP (likely CORS).",
-    errorReadFile: "Could not read file.",
-    errorResolve: "Could not resolve some image URLs (see console).",
-    errorDownload: "Some downloads failed (see console).",
-  },
-  "pt-BR": {
-    countLabel: "figurinhas",
-    searchPlaceholder: "Buscar...",
-    exportAlbum: "Exportar álbum (ZIP)",
-    exportAlbumTitle: "Cria um zip com index.html + images/ (compartilhável)",
-    viewGrid: "Grade",
-    viewCard: "Cartas",
-    viewToggleTitle: "Trocar visualização",
-    cardHint: "Clique esquerda/direita para navegar",
-    pasteText: "Importar",
-    pasteTextTitle: "Cole o conteúdo do mudae.txt em vez de selecionar um arquivo",
-    emptyTitle: "Carregue sua lista",
-    emptyText:
-      'Cole seu <code>mudae.txt</code> (formato: <code>Nome - URL</code>), depois exporte um ZIP compartilhável com <code>index.html</code> + <code>images/</code>.',
-    pasteTitle: "Cole sua lista",
-    pasteHelp:
-      'Cole aqui o conteúdo do <code>mudae.txt</code> (formato: <code>Nome - URL</code>). Exemplo:<br/><code>Diane - https://mudae.net/uploads/3900740/iy1DIZM~QFuV9Ta.png</code>',
-    pasteCancel: "Cancelar",
-    pasteLoad: "Carregar lista",
-    loadMore: "Carregar mais",
-    googleSearchTitle: "Pesquisar no Google (texto/imagens)",
-    downloadTitle: "Baixar imagem",
-    statusLoaded: (n) => `${n} figurinhas carregadas`,
-    statusResolving: (i, n) => `Resolvendo ${i}/${n}...`,
-    statusDone: "Pronto",
-    statusDoneWith: (ok, fail) => `Pronto (${ok} ok, ${fail} falharam)`,
-    statusFetching: (i, n) => `Baixando ${i}/${n}...`,
-    statusZipping: "Montando ZIP...",
-    statusExporting: "Exportando álbum...",
-    errorExportFailed:
-      "Não consegui exportar o ZIP do álbum (provável CORS).",
-    errorReadFile: "Não consegui ler o arquivo.",
-    errorResolve: "Falha ao resolver algumas URLs (veja o console).",
-    errorDownload: "Alguns downloads falharam (veja o console).",
-  },
+const TEXT = {
+  countLabel: "stickers",
+  searchPlaceholder: "Search...",
+  exportAlbum: "Export album (ZIP)",
+  exportAlbumTitle: "Creates a zip with index.html + images/ (shareable)",
+  viewGrid: "Grid",
+  viewCard: "Cards",
+  viewToggleTitle: "Switch view",
+  pasteText: "Import",
+  pasteTextTitle: "Paste your mudae.txt content instead of selecting a file",
+  emptyTitle: "Load your list",
+  emptyText:
+    'Paste your <code>mudae.txt</code> (format: <code>Name - URL</code>), then export a shareable ZIP with <code>index.html</code> + <code>images/</code>.',
+  pasteTitle: "Paste your list",
+  pasteHelp:
+    'Paste the contents of <code>mudae.txt</code> here (format: <code>Name - URL</code>). Example:<br/><code>Diane - https://mudae.net/uploads/3900740/iy1DIZM~QFuV9Ta.png</code>',
+  pasteCancel: "Cancel",
+  pasteLoad: "Load list",
+  googleSearchTitle: "Search on Google (text + image)",
+  downloadTitle: "Download image",
+  statusLoaded: (n) => `Loaded ${n} stickers`,
+  statusResolving: (i, n) => `Resolving ${i}/${n}...`,
+  statusFetching: (i, n) => `Fetching ${i}/${n}...`,
+  statusZipping: "Building ZIP...",
+  statusExporting: "Exporting album...",
+  statusDoneWith: (ok, fail) => `Done (${ok} ok, ${fail} failed)`,
+  errorExportFailed: "Could not export the album ZIP (likely CORS).",
+  errorReadFile: "Could not read file.",
+  errorResolve: "Could not resolve some image URLs (see console).",
+  errorDownload: "Some downloads failed (see console).",
 };
 
-function detectDefaultLang() {
-  const saved = localStorage.getItem("mudae_album_lang");
-  if (saved && I18N[saved]) return saved;
-  const nav = (navigator.language || "en").toLowerCase();
-  if (nav.startsWith("pt")) return "pt-BR";
-  return "en";
-}
-
-let LANG = detectDefaultLang();
 function t() {
-  return I18N[LANG] || I18N.en;
+  return TEXT;
 }
 
 const LAST_PASTE_KEY = "mudae_album_last_paste_text";
 
-function setLang(next) {
-  if (!I18N[next]) return;
-  LANG = next;
-  localStorage.setItem("mudae_album_lang", LANG);
-  document.documentElement.lang = LANG;
-
-  els.lang.value = LANG;
+function applyEnglishText() {
+  document.documentElement.lang = "en";
   els.pasteBtn.textContent = t().pasteText;
   els.pasteBtn.title = t().pasteTextTitle;
   els.q.placeholder = t().searchPlaceholder;
@@ -139,13 +83,10 @@ function setLang(next) {
   els.countLabel.textContent = t().countLabel;
   els.emptyTitle.textContent = t().emptyTitle;
   els.emptyText.innerHTML = t().emptyText;
-
   els.pasteTitle.textContent = t().pasteTitle;
   els.pasteHelp.innerHTML = t().pasteHelp;
   els.pasteCancel.textContent = t().pasteCancel;
   els.pasteLoad.textContent = t().pasteLoad;
-
-  renderFiltered();
 }
 
 let viewMode = "grid"; // "grid" | "card"
@@ -165,13 +106,18 @@ function getFilteredItems() {
   return !parts.length ? stickers : stickers.filter((s) => parts.every((p) => (s.nameLc || "").includes(p)));
 }
 
-function setViewMode(next) {
+function setViewMode(next, opts) {
+  const o = opts || {};
   viewMode = next === "card" ? "card" : "grid";
   updateViewToggleLabel();
   if (viewMode === "card") {
     els.grid.style.display = "none";
     els.cardView.hidden = false;
-    cardIndex = 0;
+    if (typeof o.cardIndex === "number" && Number.isFinite(o.cardIndex)) {
+      cardIndex = o.cardIndex;
+    } else if (o.reset !== false) {
+      cardIndex = 0;
+    }
     renderCard();
   } else {
     els.grid.style.display = "";
@@ -526,11 +472,12 @@ async function renderFiltered() {
   const imgsToWire = [];
 
   // Render quickly with placeholders; hydrate thumbs async
-  for (const s of visible) {
+  for (let idx = 0; idx < visible.length; idx++) {
+    const s = visible[idx];
     const card = document.createElement("div");
     card.className = "card";
     card.innerHTML = `
-      <a class="thumbLink" data-role="open" href="${escHtml(s.resolvedUrl || s.sourceUrl)}" target="_blank" rel="noreferrer">
+      <a class="thumbLink" data-role="open-card" data-idx="${idx}" href="${escHtml(s.resolvedUrl || s.sourceUrl)}" target="_blank" rel="noreferrer">
         <div class="thumb" data-sticker-id="${escHtml(s._id)}" data-img-url="${escHtml(s.resolvedUrl || s.sourceUrl)}" data-img-alt="${escHtml(s.name)}">
           <img class="thumbImg" loading="lazy" referrerpolicy="no-referrer" alt="${escHtml(s.name)}" src="${escHtml(s.resolvedUrl || s.sourceUrl)}" />
         </div>
@@ -834,10 +781,6 @@ function buildExportIndexHtml(title, stickersMeta) {
           <div class="pill"><span id="count"></span> <span id="countLabel"></span></div>
         </div>
         <div class="actions">
-          <select id="lang" title="Language">
-            <option value="en">EN</option>
-            <option value="pt-BR">PT-BR</option>
-          </select>
           <input id="q" type="search" autocomplete="off" />
           <button id="viewToggle" type="button"></button>
         </div>
@@ -856,19 +799,7 @@ function buildExportIndexHtml(title, stickersMeta) {
   </main>
   <script>
     const STICKERS = ${payload};
-    const I18N = {
-      "en": { countLabel:"stickers", search:"Search...", downloadTitle:"Download image", googleSearchTitle:"Search on Google (text/images)", viewGrid:"Grid", viewCard:"Cards", viewToggleTitle:"Switch view" },
-      "pt-BR": { countLabel:"figurinhas", search:"Buscar...", downloadTitle:"Baixar imagem", googleSearchTitle:"Pesquisar no Google (texto/imagens)", viewGrid:"Grade", viewCard:"Cartas", viewToggleTitle:"Trocar visualização" }
-    };
-    function detectDefaultLang(){
-      const saved = localStorage.getItem("mudae_album_lang");
-      if (saved && I18N[saved]) return saved;
-      const nav = (navigator.language || "en").toLowerCase();
-      if (nav.startsWith("pt")) return "pt-BR";
-      return "en";
-    }
-    let LANG = detectDefaultLang();
-    const langSel = document.getElementById("lang");
+    const TXT = { countLabel:"stickers", search:"Search...", downloadTitle:"Download image", googleSearchTitle:"Search on Google (text + image)", viewGrid:"Grid", viewCard:"Cards", viewToggleTitle:"Switch view" };
     const q = document.getElementById("q");
     const grid = document.getElementById("grid");
     const cardView = document.getElementById("cardView");
@@ -891,20 +822,16 @@ function buildExportIndexHtml(title, stickersMeta) {
     let viewMode = localStorage.getItem("mudae_album_view") || "grid";
     let cardIndex = 0;
 
-    function setLang(next){
-      if(!I18N[next]) return;
-      LANG = next;
-      localStorage.setItem("mudae_album_lang", LANG);
-      document.documentElement.lang = LANG;
-      langSel.value = LANG;
-      q.placeholder = I18N[LANG].search;
+    function applyEnglish(){
+      document.documentElement.lang = "en";
+      q.placeholder = TXT.search;
       updateViewToggle();
       render();
     }
 
     function updateViewToggle(){
-      viewToggle.title = I18N[LANG].viewToggleTitle;
-      viewToggle.textContent = viewMode === "grid" ? I18N[LANG].viewCard : I18N[LANG].viewGrid;
+      viewToggle.title = TXT.viewToggleTitle;
+      viewToggle.textContent = viewMode === "grid" ? TXT.viewCard : TXT.viewGrid;
     }
 
     function getItems(){
@@ -942,8 +869,8 @@ function buildExportIndexHtml(title, stickersMeta) {
               <a class="cardTitle nameLink" href="\${esc(s.local_path)}" target="_blank" rel="noreferrer" title="\${esc(s.name)}">\${esc(s.name)}</a>
               <div class="iconBar">
                 \${prog}
-                <a class="iconLink" href="\${esc(s.local_path)}" download="\${esc(s.filename)}" title="\${I18N[LANG].downloadTitle}">💾</a>
-                <a class="iconLink" href="\${googleTextAndImageUrl(s.name, s.resolved_url || s.source_url)}" target="_blank" rel="noreferrer" title="\${I18N[LANG].googleSearchTitle}">🔎</a>
+                <a class="iconLink" href="\${esc(s.local_path)}" download="\${esc(s.filename)}" title="\${TXT.downloadTitle}">💾</a>
+                <a class="iconLink" href="\${googleTextAndImageUrl(s.name, s.resolved_url || s.source_url)}" target="_blank" rel="noreferrer" title="\${TXT.googleSearchTitle}">🔎</a>
               </div>
             </div>
           </div>\`;
@@ -976,7 +903,6 @@ function buildExportIndexHtml(title, stickersMeta) {
       if(viewMode==="card"){
         grid.style.display="none";
         cardView.hidden=false;
-        cardIndex=0;
         renderCard();
       }else{
         grid.style.display="";
@@ -987,22 +913,23 @@ function buildExportIndexHtml(title, stickersMeta) {
     function render(){
       const items = getItems();
       count.textContent = String(items.length);
-      countLabel.textContent = I18N[LANG].countLabel;
+      countLabel.textContent = TXT.countLabel;
       grid.innerHTML = "";
       const frag = document.createDocumentFragment();
-      for(const s of items){
+      for(let i=0;i<items.length;i++){
+        const s = items[i];
         const d = document.createElement("div");
         d.className = "card";
         d.innerHTML = \`
-          <a class="thumbLink" href="\${esc(s.local_path)}" target="_blank" rel="noreferrer">
+          <a class="thumbLink" data-role="open-card" data-idx="\${i}" href="\${esc(s.local_path)}" target="_blank" rel="noreferrer">
             <div class="thumb"><img loading="lazy" src="\${esc(s.local_path)}" alt="\${esc(s.name)}"/></div>
           </a>
           <div class="meta">
             <div class="nameRow">
               <a class="nameLink" href="\${esc(s.local_path)}" target="_blank" rel="noreferrer" title="\${esc(s.name)}">\${esc(s.name)}</a>
               <div class="iconBar">
-                <a class="iconLink" href="\${esc(s.local_path)}" download="\${esc(s.filename)}" title="\${I18N[LANG].downloadTitle}">💾</a>
-                <a class="iconLink" href="\${googleTextAndImageUrl(s.name, s.resolved_url || s.source_url)}" target="_blank" rel="noreferrer" title="\${I18N[LANG].googleSearchTitle}">🔎</a>
+                <a class="iconLink" href="\${esc(s.local_path)}" download="\${esc(s.filename)}" title="\${TXT.downloadTitle}">💾</a>
+                <a class="iconLink" href="\${googleTextAndImageUrl(s.name, s.resolved_url || s.source_url)}" target="_blank" rel="noreferrer" title="\${TXT.googleSearchTitle}">🔎</a>
               </div>
             </div>
           </div>\`;
@@ -1010,8 +937,18 @@ function buildExportIndexHtml(title, stickersMeta) {
       }
       grid.appendChild(frag);
     }
+    // Clicking any grid image opens Card view at that index.
+    grid.addEventListener("click", (e) => {
+      if(viewMode!=="grid") return;
+      const a = e.target && e.target.closest ? e.target.closest('a[data-role="open-card"]') : null;
+      if(!a) return;
+      const idx = Number(a.getAttribute("data-idx") || "");
+      if(!Number.isFinite(idx)) return;
+      e.preventDefault();
+      cardIndex = idx;
+      setView("card");
+    });
     q.addEventListener("input", () => { if(viewMode==="card") renderCard(); else render(); });
-    langSel.addEventListener("change", () => setLang(langSel.value));
     viewToggle.addEventListener("click", () => setView(viewMode==="grid" ? "card" : "grid"));
     function nextStep(){
       if(viewMode!=="card") return;
@@ -1045,10 +982,11 @@ function buildExportIndexHtml(title, stickersMeta) {
     cardNext.addEventListener("click", nextStep);
     document.addEventListener("keydown", (e) => {
       if(viewMode!=="card") return;
+      if(e.key==="Escape"){ setView("grid"); return; }
       if(e.key==="ArrowRight"){ nextStep(); }
       if(e.key==="ArrowLeft"){ prevStep(); }
     });
-    setLang(LANG);
+    applyEnglish();
     setView(viewMode);
     if(viewMode==="grid") render();
   </script>
@@ -1196,11 +1134,22 @@ const debouncedRenderFiltered = debounce(() => {
   else renderFiltered().catch(() => {});
 }, SEARCH_DEBOUNCE_MS);
 
-els.lang.addEventListener("change", () => setLang(els.lang.value));
 els.q.addEventListener("input", debouncedRenderFiltered);
-els.viewToggle.addEventListener("click", () => setViewMode(viewMode === "grid" ? "card" : "grid"));
+els.viewToggle.addEventListener("click", () => setViewMode(viewMode === "grid" ? "card" : "grid", { reset: false }));
 els.exportAlbum.addEventListener("click", () => exportAlbumZip());
 els.pasteBtn.addEventListener("click", () => openPasteModal());
+
+// Clicking a grid image opens Card view at that index.
+els.grid.addEventListener("click", (e) => {
+  if (viewMode !== "grid") return;
+  const a = e.target && e.target.closest ? e.target.closest('a[data-role="open-card"]') : null;
+  if (!a) return;
+  const idxStr = a.getAttribute("data-idx") || "";
+  const idx = Number(idxStr);
+  if (!Number.isFinite(idx)) return;
+  e.preventDefault();
+  setViewMode("card", { cardIndex: idx, reset: false });
+});
 
 // Force-download for cross-origin images (avoids opening Imgur pages, etc.)
 document.addEventListener("click", (e) => {
@@ -1220,6 +1169,11 @@ els.cardPrev.addEventListener("click", () => prevCard());
 els.cardNext.addEventListener("click", () => nextCard());
 document.addEventListener("keydown", (e) => {
   if (viewMode !== "card") return;
+  if (!els.pasteModal.hidden) return;
+  if (e.key === "Escape") {
+    setViewMode("grid");
+    return;
+  }
   if (e.key === "ArrowRight") nextCard();
   if (e.key === "ArrowLeft") prevCard();
 });
@@ -1249,7 +1203,7 @@ els.pasteLoad.addEventListener("click", async () => {
 });
 
 // Init
-setLang(LANG);
+applyEnglishText();
 setViewMode("grid");
 // Auto-restore last pasted text (if any) on reload
 (() => {
