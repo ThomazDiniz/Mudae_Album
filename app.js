@@ -19,6 +19,7 @@ const els = {
   cardView: $("cardView"),
   cardStage: $("cardStage"),
   cardSurface: $("cardSurface"),
+  cardClose: $("cardClose"),
   cardPrev: $("cardPrev"),
   cardNext: $("cardNext"),
   emptyState: $("emptyState"),
@@ -768,6 +769,8 @@ function buildExportIndexHtml(title, stickersMeta) {
     .cardNav.left{left:10px;}
     .cardNav.right{right:10px;}
     .cardNav:hover{border-color:rgba(96,165,250,.8);}
+    .cardClose{position:absolute;top:10px;right:10px;width:44px;height:44px;border-radius:14px;border:1px solid rgba(36,50,74,.9);background:rgba(17,24,39,.65);color:var(--text);cursor:pointer;z-index:6;font-size:22px;line-height:1;display:grid;place-items:center;}
+    .cardClose:hover{border-color:rgba(96,165,250,.8);}
     .cardTapZone{position:absolute;left:0;right:0;top:0;bottom:64px;display:grid;grid-template-columns:1fr 1fr;z-index:4;pointer-events:none;}
     .cardTapZone>div{cursor:pointer;pointer-events:auto;}
   </style>
@@ -791,6 +794,7 @@ function buildExportIndexHtml(title, stickersMeta) {
     <div class="grid" id="grid"></div>
     <section id="cardView" class="cardView" hidden>
       <div class="cardStage" id="cardStage">
+        <button class="cardClose" id="cardClose" type="button" aria-label="Close">×</button>
         <button class="cardNav left" id="cardPrev" type="button" aria-label="Previous">◀</button>
         <button class="cardNav right" id="cardNext" type="button" aria-label="Next">▶</button>
         <div class="cardSurface" id="cardSurface"></div>
@@ -807,6 +811,7 @@ function buildExportIndexHtml(title, stickersMeta) {
     const viewToggle = document.getElementById("viewToggle");
     const cardPrev = document.getElementById("cardPrev");
     const cardNext = document.getElementById("cardNext");
+    const cardClose = document.getElementById("cardClose");
     const count = document.getElementById("count");
     const countLabel = document.getElementById("countLabel");
     function esc(s){return String(s||"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\\"":"&quot;","'":"&#39;"}[c]));}
@@ -980,6 +985,7 @@ function buildExportIndexHtml(title, stickersMeta) {
     }
     cardPrev.addEventListener("click", prevStep);
     cardNext.addEventListener("click", nextStep);
+    if(cardClose) cardClose.addEventListener("click", () => setView("grid"));
     document.addEventListener("keydown", (e) => {
       if(viewMode!=="card") return;
       if(e.key==="Escape"){ setView("grid"); return; }
@@ -1167,6 +1173,9 @@ document.addEventListener("click", (e) => {
 
 els.cardPrev.addEventListener("click", () => prevCard());
 els.cardNext.addEventListener("click", () => nextCard());
+if (els.cardClose) {
+  els.cardClose.addEventListener("click", () => setViewMode("grid"));
+}
 document.addEventListener("keydown", (e) => {
   if (viewMode !== "card") return;
   if (!els.pasteModal.hidden) return;
