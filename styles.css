@@ -175,13 +175,17 @@ input[type="file"]{ display:none; }
 }
 
 /* Deck transition (tinder-like step) */
+.cardStage.anim-next .cardPane.is-off-left{ transform: translateX(-160%) rotateY(40deg) scale(0.80); opacity:0; }
 .cardStage.anim-next .cardPane.is-left{ transform: translateX(-120%) rotateY(35deg) scale(0.84); opacity:0; }
 .cardStage.anim-next .cardPane.is-center{ transform: translateX(-94%) rotateY(26deg) scale(0.86); opacity:.55; filter: blur(0.2px); }
 .cardStage.anim-next .cardPane.is-right{ transform: translateX(0) rotateY(0deg) scale(1); opacity:1; filter:none; }
+.cardStage.anim-next .cardPane.is-off-right{ transform: translateX(94%) rotateY(-26deg) scale(0.86); opacity:.55; filter: blur(0.2px); }
 
+.cardStage.anim-prev .cardPane.is-off-right{ transform: translateX(160%) rotateY(-40deg) scale(0.80); opacity:0; }
 .cardStage.anim-prev .cardPane.is-right{ transform: translateX(120%) rotateY(-35deg) scale(0.84); opacity:0; }
 .cardStage.anim-prev .cardPane.is-center{ transform: translateX(94%) rotateY(-26deg) scale(0.86); opacity:.55; filter: blur(0.2px); }
 .cardStage.anim-prev .cardPane.is-left{ transform: translateX(0) rotateY(0deg) scale(1); opacity:1; filter:none; }
+.cardStage.anim-prev .cardPane.is-off-left{ transform: translateX(-94%) rotateY(26deg) scale(0.86); opacity:.55; filter: blur(0.2px); }
 .cardHero{
   position:relative;
   overflow:hidden;
@@ -198,9 +202,10 @@ input[type="file"]{ display:none; }
   padding:12px 12px 14px;
   border-top:1px solid rgba(36,50,74,.6);
   display:flex;
+  flex-direction:column;
   justify-content:center;
   align-items:center;
-  gap:10px;
+  gap:8px;
 }
 .cardTitle{
   font-weight:800;
@@ -212,7 +217,7 @@ input[type="file"]{ display:none; }
   text-align:center;
 }
 .cardFooter .nameLink{ text-align:center; }
-.cardFooter .iconBar{ margin-left: 10px; }
+.cardFooter .iconBar{ display:flex; gap:6px; align-items:center; justify-content:center; flex-wrap:wrap; }
 .cardNav{
   position:absolute;
   top:50%;

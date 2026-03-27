@@ -207,15 +207,21 @@ async function renderCard() {
   const center = items[cardIndex];
   const left = cardIndex > 0 ? items[cardIndex - 1] : null;
   const right = cardIndex < items.length - 1 ? items[cardIndex + 1] : null;
+  const offLeft = cardIndex > 1 ? items[cardIndex - 2] : null;
+  const offRight = cardIndex < items.length - 2 ? items[cardIndex + 2] : null;
 
-  const [centerUrl, leftUrl, rightUrl] = await Promise.all([
+  const [centerUrl, leftUrl, rightUrl, offLeftUrl, offRightUrl] = await Promise.all([
     resolveForDisplay(center.resolvedUrl || center.sourceUrl),
     left ? resolveForDisplay(left.resolvedUrl || left.sourceUrl) : Promise.resolve(""),
     right ? resolveForDisplay(right.resolvedUrl || right.sourceUrl) : Promise.resolve(""),
+    offLeft ? resolveForDisplay(offLeft.resolvedUrl || offLeft.sourceUrl) : Promise.resolve(""),
+    offRight ? resolveForDisplay(offRight.resolvedUrl || offRight.sourceUrl) : Promise.resolve(""),
   ]);
   center.resolvedUrl = centerUrl;
   if (left) left.resolvedUrl = leftUrl;
   if (right) right.resolvedUrl = rightUrl;
+  if (offLeft) offLeft.resolvedUrl = offLeftUrl;
+  if (offRight) offRight.resolvedUrl = offRightUrl;
 
   const paneHtml = (pos, s, url, isCenter) => {
     if (!s || !url) return `<div class="cardPane ${pos}"></div>`;
@@ -239,9 +245,11 @@ async function renderCard() {
 
   els.cardSurface.innerHTML = `
     <div class="cardDeck">
+      ${paneHtml("is-off-left", offLeft, offLeftUrl, false)}
       ${paneHtml("is-left", left, leftUrl, false)}
       ${paneHtml("is-center", center, centerUrl, true)}
       ${paneHtml("is-right", right, rightUrl, false)}
+      ${paneHtml("is-off-right", offRight, offRightUrl, false)}
       <div class="cardTapZone" id="cardTapZone">
         <div data-dir="-1"></div>
         <div data-dir="1"></div>
@@ -769,7 +777,7 @@ function buildExportIndexHtml(title, stickersMeta) {
     .nameRow{display:flex;gap:8px;align-items:flex-start;}
     .nameLink{flex:1;min-width:0;font-size:13px;font-weight:650;line-height:1.2;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;min-height:32px;color:var(--text);text-decoration:none;}
     .nameLink:hover{text-decoration:underline;}
-    .iconBar{display:flex;gap:6px;align-items:center;flex:0 0 auto;}
+    .iconBar{display:flex;gap:6px;align-items:center;justify-content:center;flex-wrap:wrap;flex:0 0 auto;}
     .iconLink{width:28px;height:28px;display:inline-grid;place-items:center;border-radius:10px;border:1px solid rgba(36,50,74,.9);background:rgba(17,24,39,.75);color:var(--text);text-decoration:none;font-size:14px;line-height:1;}
     .iconLink:hover{border-color:rgba(96,165,250,.8);}
 
@@ -783,15 +791,19 @@ function buildExportIndexHtml(title, stickersMeta) {
     .cardPane.is-left{transform:translateX(-94%) rotateY(26deg) scale(0.86);opacity:.55;filter:blur(0.2px);}
     .cardPane.is-center{transform:translateX(0) rotateY(0) scale(1);opacity:1;}
     .cardPane.is-right{transform:translateX(94%) rotateY(-26deg) scale(0.86);opacity:.55;filter:blur(0.2px);}
+    .cardStage.anim-next .cardPane.is-off-left{transform:translateX(-160%) rotateY(40deg) scale(0.80);opacity:0;}
     .cardStage.anim-next .cardPane.is-left{transform:translateX(-120%) rotateY(35deg) scale(0.84);opacity:0;}
     .cardStage.anim-next .cardPane.is-center{transform:translateX(-94%) rotateY(26deg) scale(0.86);opacity:.55;filter:blur(0.2px);}
     .cardStage.anim-next .cardPane.is-right{transform:translateX(0) rotateY(0) scale(1);opacity:1;filter:none;}
+    .cardStage.anim-next .cardPane.is-off-right{transform:translateX(94%) rotateY(-26deg) scale(0.86);opacity:.55;filter:blur(0.2px);}
+    .cardStage.anim-prev .cardPane.is-off-right{transform:translateX(160%) rotateY(-40deg) scale(0.80);opacity:0;}
     .cardStage.anim-prev .cardPane.is-right{transform:translateX(120%) rotateY(-35deg) scale(0.84);opacity:0;}
     .cardStage.anim-prev .cardPane.is-center{transform:translateX(94%) rotateY(-26deg) scale(0.86);opacity:.55;filter:blur(0.2px);}
     .cardStage.anim-prev .cardPane.is-left{transform:translateX(0) rotateY(0) scale(1);opacity:1;filter:none;}
+    .cardStage.anim-prev .cardPane.is-off-left{transform:translateX(-94%) rotateY(26deg) scale(0.86);opacity:.55;filter:blur(0.2px);}
     .cardHero{position:relative;overflow:hidden;background:rgba(0,0,0,.25);}
     .cardHero img{width:100%;height:100%;object-fit:contain;display:block;background:rgba(0,0,0,.35);}
-    .cardFooter{padding:12px 12px 14px;border-top:1px solid rgba(36,50,74,.6);display:flex;justify-content:center;align-items:center;gap:10px;}
+    .cardFooter{padding:12px 12px 14px;border-top:1px solid rgba(36,50,74,.6);display:flex;flex-direction:column;justify-content:center;align-items:center;gap:8px;}
     .cardTitle{font-weight:800;letter-spacing:.2px;font-size:16px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:center;}
     .cardNav{position:absolute;top:50%;transform:translateY(-50%);width:44px;height:44px;border-radius:14px;border:1px solid rgba(36,50,74,.9);background:rgba(17,24,39,.65);color:var(--text);cursor:pointer;z-index:5;}
     .cardNav.left{left:10px;}
