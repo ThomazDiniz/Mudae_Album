@@ -277,7 +277,7 @@ input[type="file"]{ display:none; }
   left:0;
   right:0;
   top:0;
-  bottom:64px; /* don't cover footer/buttons */
+  bottom:140px; /* don't cover footer/buttons */
   display:grid;
   grid-template-columns: 1fr 1fr;
   z-index:4;

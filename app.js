@@ -421,7 +421,9 @@ function googleTextAndImageUrl(name, imageUrl) {
   const u = String(imageUrl || "");
   if (u.startsWith("http://") || u.startsWith("https://")) {
     const img = encodeURIComponent(u);
-    return `https://www.google.com/searchbyimage?image_url=${img}&q=${q}`;
+    // Google deprecated/limits `searchbyimage` for URL-based inputs; Lens works better.
+    // `q` is not officially documented here, but harmless if ignored.
+    return `https://lens.google.com/uploadbyurl?url=${img}&q=${q}`;
   }
   return `https://www.google.com/search?tbm=isch&q=${q}`;
 }
@@ -760,7 +762,7 @@ function buildExportIndexHtml(title, stickersMeta) {
     .cardNav:hover{border-color:rgba(96,165,250,.8);}
     .cardClose{position:absolute;top:10px;right:10px;width:44px;height:44px;border-radius:14px;border:1px solid rgba(36,50,74,.9);background:rgba(17,24,39,.65);color:var(--text);cursor:pointer;z-index:6;font-size:22px;line-height:1;display:grid;place-items:center;}
     .cardClose:hover{border-color:rgba(96,165,250,.8);}
-    .cardTapZone{position:absolute;left:0;right:0;top:0;bottom:64px;display:grid;grid-template-columns:1fr 1fr;z-index:4;pointer-events:none;}
+    .cardTapZone{position:absolute;left:0;right:0;top:0;bottom:140px;display:grid;grid-template-columns:1fr 1fr;z-index:4;pointer-events:none;}
     .cardTapZone>div{cursor:pointer;pointer-events:auto;}
   </style>
 </head>
@@ -807,7 +809,7 @@ function buildExportIndexHtml(title, stickersMeta) {
       const u = String(imageUrl||"");
       if(u.startsWith("http://") || u.startsWith("https://")){
         const img = encodeURIComponent(u);
-        return "https://www.google.com/searchbyimage?image_url="+img+"&q="+q;
+        return "https://lens.google.com/uploadbyurl?url="+img+"&q="+q;
       }
       return "https://www.google.com/search?tbm=isch&q="+q;
     }
