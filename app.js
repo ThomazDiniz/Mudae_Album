@@ -12,7 +12,6 @@ const els = {
   q: $("q"),
   count: $("count"),
   countLabel: $("countLabel"),
-  viewToggle: $("viewToggle"),
   exportAlbum: $("exportAlbum"),
   status: $("status"),
   grid: $("grid"),
@@ -40,9 +39,6 @@ const TEXT = {
   searchPlaceholder: "Search...",
   exportAlbum: "Export album (ZIP)",
   exportAlbumTitle: "Creates a zip with index.html + images/ (shareable)",
-  viewGrid: "Grid",
-  viewCard: "Cards",
-  viewToggleTitle: "Switch view",
   pasteText: "Import",
   pasteTextTitle: "Paste your mudae.txt content instead of selecting a file",
   emptyTitle: "Load your list",
@@ -80,7 +76,6 @@ function applyEnglishText() {
   els.q.placeholder = t().searchPlaceholder;
   els.exportAlbum.textContent = t().exportAlbum;
   els.exportAlbum.title = t().exportAlbumTitle;
-  updateViewToggleLabel();
   els.countLabel.textContent = t().countLabel;
   els.emptyTitle.textContent = t().emptyTitle;
   els.emptyText.innerHTML = t().emptyText;
@@ -95,12 +90,6 @@ let cardIndex = 0;
 let isCardAnimating = false;
 const CARD_ANIM_MS = 160;
 
-function updateViewToggleLabel() {
-  if (!els.viewToggle) return;
-  els.viewToggle.title = t().viewToggleTitle;
-  els.viewToggle.textContent = viewMode === "grid" ? t().viewCard : t().viewGrid;
-}
-
 function getFilteredItems() {
   const term = normalizeQuery(els.q.value);
   const parts = term ? term.split(/\s+/g).filter(Boolean) : [];
@@ -110,7 +99,6 @@ function getFilteredItems() {
 function setViewMode(next, opts) {
   const o = opts || {};
   viewMode = next === "card" ? "card" : "grid";
-  updateViewToggleLabel();
   if (viewMode === "card") {
     els.grid.style.display = "none";
     els.cardView.hidden = false;
@@ -785,7 +773,6 @@ function buildExportIndexHtml(title, stickersMeta) {
         </div>
         <div class="actions">
           <input id="q" type="search" autocomplete="off" />
-          <button id="viewToggle" type="button"></button>
         </div>
       </div>
     </div>
@@ -803,12 +790,11 @@ function buildExportIndexHtml(title, stickersMeta) {
   </main>
   <script>
     const STICKERS = ${payload};
-    const TXT = { countLabel:"stickers", search:"Search...", downloadTitle:"Download image", googleSearchTitle:"Search on Google (text + image)", viewGrid:"Grid", viewCard:"Cards", viewToggleTitle:"Switch view" };
+    const TXT = { countLabel:"stickers", search:"Search...", downloadTitle:"Download image", googleSearchTitle:"Search on Google (text + image)" };
     const q = document.getElementById("q");
     const grid = document.getElementById("grid");
     const cardView = document.getElementById("cardView");
     const cardSurface = document.getElementById("cardSurface");
-    const viewToggle = document.getElementById("viewToggle");
     const cardPrev = document.getElementById("cardPrev");
     const cardNext = document.getElementById("cardNext");
     const cardClose = document.getElementById("cardClose");
@@ -830,13 +816,7 @@ function buildExportIndexHtml(title, stickersMeta) {
     function applyEnglish(){
       document.documentElement.lang = "en";
       q.placeholder = TXT.search;
-      updateViewToggle();
       render();
-    }
-
-    function updateViewToggle(){
-      viewToggle.title = TXT.viewToggleTitle;
-      viewToggle.textContent = viewMode === "grid" ? TXT.viewCard : TXT.viewGrid;
     }
 
     function getItems(){
@@ -904,7 +884,6 @@ function buildExportIndexHtml(title, stickersMeta) {
     function setView(next){
       viewMode = next==="card" ? "card" : "grid";
       localStorage.setItem("mudae_album_view", viewMode);
-      updateViewToggle();
       if(viewMode==="card"){
         grid.style.display="none";
         cardView.hidden=false;
@@ -954,7 +933,6 @@ function buildExportIndexHtml(title, stickersMeta) {
       setView("card");
     });
     q.addEventListener("input", () => { if(viewMode==="card") renderCard(); else render(); });
-    viewToggle.addEventListener("click", () => setView(viewMode==="grid" ? "card" : "grid"));
     function nextStep(){
       if(viewMode!=="card") return;
       const items=getItems();
@@ -1141,7 +1119,6 @@ const debouncedRenderFiltered = debounce(() => {
 }, SEARCH_DEBOUNCE_MS);
 
 els.q.addEventListener("input", debouncedRenderFiltered);
-els.viewToggle.addEventListener("click", () => setViewMode(viewMode === "grid" ? "card" : "grid", { reset: false }));
 els.exportAlbum.addEventListener("click", () => exportAlbumZip());
 els.pasteBtn.addEventListener("click", () => openPasteModal());
 
