@@ -742,6 +742,8 @@ function buildExportIndexHtml(title, stickersMeta) {
     .cardPane.is-left{transform:translateX(-94%) rotateY(26deg) scale(0.86);opacity:.55;filter:blur(0.2px);}
     .cardPane.is-center{transform:translateX(0) rotateY(0) scale(1);opacity:1;}
     .cardPane.is-right{transform:translateX(94%) rotateY(-26deg) scale(0.86);opacity:.55;filter:blur(0.2px);}
+    .cardPane.is-off-left{transform:translateX(-120%) rotateY(35deg) scale(0.84);opacity:0;}
+    .cardPane.is-off-right{transform:translateX(120%) rotateY(-35deg) scale(0.84);opacity:0;}
     .cardStage.anim-next .cardPane.is-off-left{transform:translateX(-160%) rotateY(40deg) scale(0.80);opacity:0;}
     .cardStage.anim-next .cardPane.is-left{transform:translateX(-120%) rotateY(35deg) scale(0.84);opacity:0;}
     .cardStage.anim-next .cardPane.is-center{transform:translateX(-94%) rotateY(26deg) scale(0.86);opacity:.55;filter:blur(0.2px);}
