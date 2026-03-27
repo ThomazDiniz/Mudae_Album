@@ -712,10 +712,10 @@ function buildExportIndexHtml(title, stickersMeta) {
     .title{font-weight:800;letter-spacing:.2px;}
     .pill{color:var(--muted);font-size:12px;border:1px solid rgba(36,50,74,.8);background:rgba(15,23,42,.55);padding:6px 10px;border-radius:999px;}
     .actions{display:flex;gap:10px;align-items:center;justify-content:flex-end;flex:1;flex-wrap:wrap;}
-    select,input{border-radius:10px;border:1px solid rgba(36,50,74,.9);background:rgba(17,24,39,.9);color:var(--text);outline:none;}
+    select,input{border-radius:10px;border:1px solid rgba(248,113,113,.75);background:rgba(17,24,39,.9);color:var(--text);outline:none;}
     select{padding:10px;}
     input{flex:1;min-width:240px;padding:10px 12px;background:rgba(17,24,39,.7);}
-    input:focus{border-color:rgba(96,165,250,.8);box-shadow:0 0 0 4px rgba(96,165,250,.15);}
+    input:focus{border-color:rgba(248,113,113,.95);box-shadow:0 0 0 4px rgba(248,113,113,.18);}
     button{padding:10px 12px;border-radius:10px;border:1px solid rgba(36,50,74,.9);background:rgba(17,24,39,.9);color:var(--text);cursor:pointer;}
     button:hover{border-color:rgba(96,165,250,.8);}
     .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;margin-top:14px;}
@@ -760,8 +760,8 @@ function buildExportIndexHtml(title, stickersMeta) {
     .cardNav.left{left:10px;}
     .cardNav.right{right:10px;}
     .cardNav:hover{border-color:rgba(96,165,250,.8);}
-    .cardClose{position:absolute;top:10px;right:10px;width:44px;height:44px;border-radius:14px;border:1px solid rgba(36,50,74,.9);background:rgba(17,24,39,.65);color:var(--text);cursor:pointer;z-index:6;font-size:22px;line-height:1;display:grid;place-items:center;}
-    .cardClose:hover{border-color:rgba(96,165,250,.8);}
+    .cardClose{position:absolute;top:10px;right:10px;width:44px;height:44px;border-radius:14px;border:1px solid rgba(248,113,113,.85);background:rgba(248,113,113,.18);color:#fecaca;cursor:pointer;z-index:6;font-size:22px;line-height:1;display:grid;place-items:center;}
+    .cardClose:hover{border-color:rgba(248,113,113,1);background:rgba(248,113,113,.26);}
     .cardTapZone{position:absolute;left:0;right:0;top:0;bottom:140px;display:grid;grid-template-columns:1fr 1fr;z-index:4;pointer-events:none;}
     .cardTapZone>div{cursor:pointer;pointer-events:auto;}
   </style>
