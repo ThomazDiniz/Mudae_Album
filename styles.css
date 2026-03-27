@@ -139,8 +139,8 @@ input[type="file"]{ display:none; }
 }
 .cardPane{
   position:absolute;
-  width: min(760px, 92%);
-  height: calc(100% - 64px);
+  width: min(680px, 86%);
+  height: 100%;
   border-radius: 14px;
   overflow:hidden;
   background:rgba(0,0,0,.12);
@@ -148,9 +148,11 @@ input[type="file"]{ display:none; }
   box-shadow: 0 18px 60px rgba(0,0,0,.35);
   transform-style: preserve-3d;
   transition: transform 260ms ease, opacity 260ms ease, filter 260ms ease;
+  display:grid;
+  grid-template-rows: 1fr auto;
 }
 .cardPane.is-left{
-  transform: translateX(-62%) rotateY(22deg) scale(0.88);
+  transform: translateX(-74%) rotateY(26deg) scale(0.86);
   opacity: .55;
   filter: blur(0.2px);
 }
@@ -159,7 +161,7 @@ input[type="file"]{ display:none; }
   opacity: 1;
 }
 .cardPane.is-right{
-  transform: translateX(62%) rotateY(-22deg) scale(0.88);
+  transform: translateX(74%) rotateY(-26deg) scale(0.86);
   opacity: .55;
   filter: blur(0.2px);
 }

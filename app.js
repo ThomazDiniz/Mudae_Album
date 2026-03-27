@@ -216,12 +216,21 @@ async function renderCard() {
   if (left) left.resolvedUrl = leftUrl;
   if (right) right.resolvedUrl = rightUrl;
 
-  const paneHtml = (pos, s, url) => {
+  const paneHtml = (pos, s, url, isCenter) => {
     if (!s || !url) return `<div class="cardPane ${pos}"></div>`;
+    const prog = isCenter ? `<span style="color:var(--muted);font-size:12px;margin-right:6px;">${cardIndex + 1} / ${items.length}</span>` : "";
     return `
       <div class="cardPane ${pos}">
         <div class="cardHero">
           <img loading="eager" referrerpolicy="no-referrer" alt="${escHtml(s.name)}" src="${escHtml(url)}" />
+        </div>
+        <div class="cardFooter">
+          <a class="cardTitle nameLink" data-role="open" href="${escHtml(url)}" target="_blank" rel="noreferrer" title="${escHtml(s.name)}">${escHtml(s.name)}</a>
+          <div class="iconBar">
+            ${prog}
+            <a class="iconLink" data-role="download" href="${escHtml(url)}" download="${escHtml(s.name)}" title="${escHtml(t().downloadTitle)}">💾</a>
+            <a class="iconLink" href="https://www.google.com/search?q=${encodeURIComponent(s.name)}" target="_blank" rel="noreferrer" title="${escHtml(t().googleSearchTitle)}">🔎</a>
+          </div>
         </div>
       </div>
     `;
@@ -229,20 +238,12 @@ async function renderCard() {
 
   els.cardSurface.innerHTML = `
     <div class="cardDeck">
-      ${paneHtml("is-left", left, leftUrl)}
-      ${paneHtml("is-center", center, centerUrl)}
-      ${paneHtml("is-right", right, rightUrl)}
+      ${paneHtml("is-left", left, leftUrl, false)}
+      ${paneHtml("is-center", center, centerUrl, true)}
+      ${paneHtml("is-right", right, rightUrl, false)}
       <div class="cardTapZone" id="cardTapZone">
         <div data-dir="-1"></div>
         <div data-dir="1"></div>
-      </div>
-    </div>
-    <div class="cardFooter">
-      <a class="cardTitle nameLink" data-role="open" href="${escHtml(centerUrl)}" target="_blank" rel="noreferrer" title="${escHtml(center.name)}">${escHtml(center.name)}</a>
-      <div class="iconBar">
-        <span style="color:var(--muted);font-size:12px;margin-right:6px;">${cardIndex + 1} / ${items.length}</span>
-        <a class="iconLink" data-role="download" href="${escHtml(centerUrl)}" download="${escHtml(center.name)}" title="${escHtml(t().downloadTitle)}">💾</a>
-        <a class="iconLink" href="https://www.google.com/search?q=${encodeURIComponent(center.name)}" target="_blank" rel="noreferrer" title="${escHtml(t().googleSearchTitle)}">🔎</a>
       </div>
     </div>
   `;
@@ -755,10 +756,10 @@ function buildExportIndexHtml(title, stickersMeta) {
     .cardStage{position:relative;height:calc(100vh - 120px);min-height:520px;max-width:900px;margin:0 auto;border:1px solid rgba(36,50,74,.8);border-radius:14px;overflow:hidden;background:linear-gradient(180deg, rgba(17,24,39,.65), rgba(15,23,42,.65));box-shadow:0 10px 25px rgba(0,0,0,.25);}
     .cardSurface{position:absolute;inset:0;display:grid;grid-template-rows:1fr auto;}
     .cardDeck{position:absolute;inset:0;display:grid;place-items:center;perspective:1200px;}
-    .cardPane{position:absolute;width:min(760px,92%);height:calc(100% - 64px);border-radius:14px;overflow:hidden;background:rgba(0,0,0,.12);border:1px solid rgba(36,50,74,.55);box-shadow:0 18px 60px rgba(0,0,0,.35);transform-style:preserve-3d;transition:transform 260ms ease, opacity 260ms ease, filter 260ms ease;}
-    .cardPane.is-left{transform:translateX(-62%) rotateY(22deg) scale(0.88);opacity:.55;filter:blur(0.2px);}
+    .cardPane{position:absolute;width:min(680px,86%);height:100%;border-radius:14px;overflow:hidden;background:rgba(0,0,0,.12);border:1px solid rgba(36,50,74,.55);box-shadow:0 18px 60px rgba(0,0,0,.35);transform-style:preserve-3d;transition:transform 260ms ease, opacity 260ms ease, filter 260ms ease;display:grid;grid-template-rows:1fr auto;}
+    .cardPane.is-left{transform:translateX(-74%) rotateY(26deg) scale(0.86);opacity:.55;filter:blur(0.2px);}
     .cardPane.is-center{transform:translateX(0) rotateY(0) scale(1);opacity:1;}
-    .cardPane.is-right{transform:translateX(62%) rotateY(-22deg) scale(0.88);opacity:.55;filter:blur(0.2px);}
+    .cardPane.is-right{transform:translateX(74%) rotateY(-26deg) scale(0.86);opacity:.55;filter:blur(0.2px);}
     .cardHero{position:relative;overflow:hidden;background:rgba(0,0,0,.25);}
     .cardHero img{width:100%;height:100%;object-fit:contain;display:block;background:rgba(0,0,0,.35);}
     .cardFooter{padding:12px 12px 14px;border-top:1px solid rgba(36,50,74,.6);display:flex;justify-content:space-between;align-items:center;gap:10px;}
@@ -867,10 +868,19 @@ function buildExportIndexHtml(title, stickersMeta) {
       const right = cardIndex<items.length-1 ? items[cardIndex+1] : null;
       function pane(pos, s){
         if(!s) return '<div class="cardPane '+pos+'"></div>';
+        const prog = pos==="is-center" ? ('<span style="color:var(--muted);font-size:12px;margin-right:6px;">'+(cardIndex+1)+' / '+items.length+'</span>') : '';
         return \`
           <div class="cardPane \${pos}">
             <div class="cardHero">
               <img loading="eager" referrerpolicy="no-referrer" alt="\${esc(s.name)}" src="\${esc(s.local_path)}" />
+            </div>
+            <div class="cardFooter">
+              <a class="cardTitle nameLink" href="\${esc(s.local_path)}" target="_blank" rel="noreferrer" title="\${esc(s.name)}">\${esc(s.name)}</a>
+              <div class="iconBar">
+                \${prog}
+                <a class="iconLink" href="\${esc(s.local_path)}" download="\${esc(s.filename)}" title="\${I18N[LANG].downloadTitle}">💾</a>
+                <a class="iconLink" href="https://www.google.com/search?q=\${encodeURIComponent(s.name)}" target="_blank" rel="noreferrer" title="\${I18N[LANG].googleSearchTitle}">🔎</a>
+              </div>
             </div>
           </div>\`;
       }
@@ -884,14 +894,7 @@ function buildExportIndexHtml(title, stickersMeta) {
             <div data-dir="1"></div>
           </div>
         </div>
-        <div class="cardFooter">
-          <a class="cardTitle nameLink" href="\${esc(center.local_path)}" target="_blank" rel="noreferrer" title="\${esc(center.name)}">\${esc(center.name)}</a>
-          <div class="iconBar">
-            <span style="color:var(--muted);font-size:12px;margin-right:6px;">\${cardIndex + 1} / \${items.length}</span>
-            <a class="iconLink" href="\${esc(center.local_path)}" download="\${esc(center.filename)}" title="\${I18N[LANG].downloadTitle}">💾</a>
-            <a class="iconLink" href="https://www.google.com/search?q=\${encodeURIComponent(center.name)}" target="_blank" rel="noreferrer" title="\${I18N[LANG].googleSearchTitle}">🔎</a>
-          </div>
-        </div>\`;
+        \`;
       const tap = document.getElementById("cardTapZone");
       if(tap){
         tap.onclick = (e) => {
