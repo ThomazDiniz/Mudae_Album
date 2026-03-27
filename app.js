@@ -46,9 +46,8 @@ const I18N = {
     pasteCancel: "Cancel",
     pasteLoad: "Load list",
     loadMore: "Load more",
-    singleDownload: "download",
     googleSearchTitle: "Search on Google (text/images)",
-    googleSearchLabel: "search",
+    downloadTitle: "Download image",
     statusLoaded: (n) => `Loaded ${n} stickers`,
     statusResolving: (i, n) => `Resolving ${i}/${n}...`,
     statusFetching: (i, n) => `Fetching ${i}/${n}...`,
@@ -78,9 +77,8 @@ const I18N = {
     pasteCancel: "Cancelar",
     pasteLoad: "Carregar lista",
     loadMore: "Carregar mais",
-    singleDownload: "baixar",
     googleSearchTitle: "Pesquisar no Google (texto/imagens)",
-    googleSearchLabel: "buscar",
+    downloadTitle: "Baixar imagem",
     statusLoaded: (n) => `${n} figurinhas carregadas`,
     statusResolving: (i, n) => `Resolvendo ${i}/${n}...`,
     statusDone: "Pronto",
@@ -209,7 +207,6 @@ function looksLikeDirectImage(url) {
 async function resolveImageUrl(url) {
   const u = String(url || "").trim();
   if (!u) return u;
-  if (looksLikeDirectImage(u)) return u;
 
   // Imgur: convert known patterns to direct i.imgur.com URLs.
   // - https://imgur.com/<id>.<ext>   -> https://i.imgur.com/<id>.<ext>
@@ -230,6 +227,8 @@ async function resolveImageUrl(url) {
   } catch {
     // ignore URL parse errors
   }
+
+  if (looksLikeDirectImage(u)) return u;
 
   // Imgur page -> og:image
   const m = u.match(/^https?:\/\/(www\.)?imgur\.com\/([A-Za-z0-9]+)([/?#].*)?$/);
@@ -410,9 +409,9 @@ async function hydrateThumbElement(thumbEl) {
     }
     const card = thumbEl.closest(".card");
     if (card) {
-      const aSrc = card.querySelector('a[data-role="src"]');
+      const opens = card.querySelectorAll('a[data-role="open"]');
       const aDl = card.querySelector('a[data-role="download"]');
-      if (aSrc) aSrc.href = imgUrl;
+      for (const a of opens) a.href = imgUrl;
       if (aDl) aDl.href = imgUrl;
     }
     const blob = await fetchBlob(imgUrl);
@@ -485,15 +484,19 @@ async function renderFiltered() {
     const card = document.createElement("div");
     card.className = "card";
     card.innerHTML = `
-      <div class="thumb" data-sticker-id="${escHtml(s._id)}" data-img-url="${escHtml(s.resolvedUrl || s.sourceUrl)}" data-img-alt="${escHtml(s.name)}" data-hydrated="0">
-        <div class="ph">...</div>
-      </div>
+      <a class="thumbLink" data-role="open" href="${escHtml(s.resolvedUrl || s.sourceUrl)}" target="_blank" rel="noreferrer">
+        <div class="thumb" data-sticker-id="${escHtml(s._id)}" data-img-url="${escHtml(s.resolvedUrl || s.sourceUrl)}" data-img-alt="${escHtml(s.name)}" data-hydrated="0">
+          <div class="ph">...</div>
+        </div>
+      </a>
       <div class="meta">
-        <div class="name" title="${escHtml(s.name)}">${escHtml(s.name)}</div>
+        <a class="nameLink" data-role="open" href="${escHtml(s.resolvedUrl || s.sourceUrl)}" target="_blank" rel="noreferrer" title="${escHtml(s.name)}">${escHtml(s.name)}</a>
         <div class="small">
-          <a class="link" data-role="src" href="${escHtml(s.resolvedUrl || s.sourceUrl)}" target="_blank" rel="noreferrer">src</a>
-          <a class="link" data-role="download" href="${escHtml(s.resolvedUrl || s.sourceUrl)}" download="${escHtml(s.name)}">${t().singleDownload}</a>
-          <a class="link" href="https://www.google.com/search?q=${encodeURIComponent(s.name)}" target="_blank" rel="noreferrer" title="${escHtml(t().googleSearchTitle)}">🔎 ${escHtml(t().googleSearchLabel)}</a>
+          <span></span>
+          <div style="display:flex;gap:6px;align-items:center;">
+            <a class="iconLink" data-role="download" href="${escHtml(s.resolvedUrl || s.sourceUrl)}" download="${escHtml(s.name)}" title="${escHtml(t().downloadTitle)}">💾</a>
+            <a class="iconLink" href="https://www.google.com/search?q=${encodeURIComponent(s.name)}" target="_blank" rel="noreferrer" title="${escHtml(t().googleSearchTitle)}">🔎</a>
+          </div>
         </div>
       </div>
     `;
@@ -724,8 +727,8 @@ function buildExportIndexHtml(title, stickersMeta) {
   <script>
     const STICKERS = ${payload};
     const I18N = {
-      "en": { countLabel:"stickers", search:"Search...", download:"download", googleSearchTitle:"Search on Google (text/images)", googleSearchLabel:"search" },
-      "pt-BR": { countLabel:"figurinhas", search:"Buscar...", download:"baixar", googleSearchTitle:"Pesquisar no Google (texto/imagens)", googleSearchLabel:"buscar" }
+      "en": { countLabel:"stickers", search:"Search...", downloadTitle:"Download image", googleSearchTitle:"Search on Google (text/images)" },
+      "pt-BR": { countLabel:"figurinhas", search:"Buscar...", downloadTitle:"Baixar imagem", googleSearchTitle:"Pesquisar no Google (texto/imagens)" }
     };
     function detectDefaultLang(){
       const saved = localStorage.getItem("mudae_album_lang");
@@ -762,13 +765,17 @@ function buildExportIndexHtml(title, stickersMeta) {
         const d = document.createElement("div");
         d.className = "card";
         d.innerHTML = \`
-          <div class="thumb"><img loading="lazy" src="\${esc(s.local_path)}" alt="\${esc(s.name)}"/></div>
+          <a class="thumbLink" href="\${esc(s.local_path)}" target="_blank" rel="noreferrer">
+            <div class="thumb"><img loading="lazy" src="\${esc(s.local_path)}" alt="\${esc(s.name)}"/></div>
+          </a>
           <div class="meta">
-            <div class="name" title="\${esc(s.name)}">\${esc(s.name)}</div>
+            <a class="nameLink" href="\${esc(s.local_path)}" target="_blank" rel="noreferrer" title="\${esc(s.name)}">\${esc(s.name)}</a>
             <div class="small">
-              <span>\${esc(s.ext||"")}</span>
-              <a href="\${esc(s.local_path)}" download="\${esc(s.filename)}">\${I18N[LANG].download}</a>
-              <a href="https://www.google.com/search?q=\${encodeURIComponent(s.name)}" target="_blank" rel="noreferrer" title="\${I18N[LANG].googleSearchTitle}">🔎 \${I18N[LANG].googleSearchLabel}</a>
+              <span></span>
+              <div style="display:flex;gap:6px;align-items:center;">
+                <a class="iconLink" href="\${esc(s.local_path)}" download="\${esc(s.filename)}" title="\${I18N[LANG].downloadTitle}">💾</a>
+                <a class="iconLink" href="https://www.google.com/search?q=\${encodeURIComponent(s.name)}" target="_blank" rel="noreferrer" title="\${I18N[LANG].googleSearchTitle}">🔎</a>
+              </div>
             </div>
           </div>\`;
         frag.appendChild(d);
