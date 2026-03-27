@@ -263,6 +263,8 @@ let thumbQueue = [];
 let thumbActive = 0;
 let currentRenderLimit = GRID_BATCH_SIZE;
 let lastFilterKey = "";
+let loadMoreObserver = null;
+let loadMoreSentinel = null;
 
 function debounce(fn, waitMs) {
   let timer = null;
@@ -444,25 +446,36 @@ async function renderFiltered() {
     }
   }
 
-  if (visible.length < items.length) {
-    const moreWrap = document.createElement("div");
-    moreWrap.className = "card";
-    moreWrap.innerHTML = `
-      <div class="meta" style="min-height:120px;justify-content:center;align-items:center;">
-        <button class="btn" type="button" data-load-more="1">${escHtml(t().loadMore)} (${visible.length}/${items.length})</button>
-      </div>
-    `;
-    const btn = moreWrap.querySelector("[data-load-more]");
-    if (btn) {
-      btn.addEventListener("click", () => {
-        currentRenderLimit += GRID_BATCH_SIZE;
-        renderFiltered().catch(() => {});
-      });
-    }
-    frag.appendChild(moreWrap);
+  // Infinite scroll sentinel
+  if (!loadMoreSentinel) {
+    loadMoreSentinel = document.createElement("div");
+    loadMoreSentinel.style.height = "1px";
   }
+  frag.appendChild(loadMoreSentinel);
 
   els.grid.appendChild(frag);
+
+  // Observe the sentinel and load more when near bottom.
+  if (!loadMoreObserver && typeof IntersectionObserver !== "undefined") {
+    loadMoreObserver = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (!entry.isIntersecting) continue;
+          // Only load more if there is more to show.
+          if (currentRenderLimit < items.length) {
+            currentRenderLimit = Math.min(currentRenderLimit + GRID_BATCH_SIZE, items.length);
+            // Render more, but avoid tight loops by deferring.
+            setTimeout(() => renderFiltered().catch(() => {}), 0);
+          }
+        }
+      },
+      { root: null, rootMargin: "1200px 0px", threshold: 0.01 }
+    );
+  }
+  if (loadMoreObserver) {
+    loadMoreObserver.disconnect();
+    loadMoreObserver.observe(loadMoreSentinel);
+  }
 }
 
 // ---- Downloading ----
