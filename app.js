@@ -727,6 +727,7 @@ function buildExportIndexHtml(title, stickersMeta) {
     .nameRow{display:flex;gap:8px;align-items:flex-start;}
     .nameLink{flex:1;min-width:0;font-size:13px;font-weight:650;line-height:1.2;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;min-height:32px;color:var(--text);text-decoration:none;}
     .nameLink:hover{text-decoration:underline;}
+    .fileHint{margin-top:4px;font-size:11px;line-height:1.2;color:#facc15;word-break:break-all;}
     .iconBar{display:flex;gap:4px;align-items:center;justify-content:center;flex-wrap:wrap;flex:0 0 auto;}
     .cardProgress{color:var(--muted);font-size:12px;margin:0 4px 0 0;}
     .iconLink{width:28px;height:28px;display:inline-grid;place-items:center;border-radius:10px;border:1px solid rgba(36,50,74,.9);background:rgba(17,24,39,.75);color:var(--text);text-decoration:none;font-size:14px;line-height:1;}
@@ -819,6 +820,44 @@ function buildExportIndexHtml(title, stickersMeta) {
     let viewMode = localStorage.getItem("mudae_album_view") || "grid";
     let cardIndex = 0;
 
+    function mediaPath(s){
+      return (s && (s.display_path || s.local_path)) || "";
+    }
+
+    function imageExists(src){
+      return new Promise((resolve) => {
+        const img = new Image();
+        let done = false;
+        const finish = (ok) => {
+          if (done) return;
+          done = true;
+          resolve(ok);
+        };
+        const timer = setTimeout(() => finish(false), 5000);
+        img.onload = () => { clearTimeout(timer); finish(true); };
+        img.onerror = () => { clearTimeout(timer); finish(false); };
+        img.src = src;
+      });
+    }
+
+    async function prepareDisplayPaths(){
+      await Promise.all(STICKERS.map(async (s) => {
+        if (s && s.is_remote && s.remote_url) {
+          const ok = await imageExists(s.local_path);
+          if (ok) {
+            s.display_path = s.local_path;
+            s.is_remote_active = false;
+          } else {
+            s.display_path = s.remote_url;
+            s.is_remote_active = true;
+          }
+        } else {
+          s.display_path = s.local_path;
+          s.is_remote_active = false;
+        }
+      }));
+    }
+
     function applyEnglish(){
       document.documentElement.lang = "en";
       q.placeholder = TXT.search;
@@ -853,18 +892,21 @@ function buildExportIndexHtml(title, stickersMeta) {
       function pane(pos, s, idx){
         if(!s) return '<div class="cardPane '+pos+'"></div>';
         const prog = '<span class="cardProgress">'+(idx+1)+' / '+items.length+'</span>';
-        const remoteClass = s.is_remote ? " isRemote" : "";
+        const remoteClass = s.is_remote_active ? " isRemote" : "";
+        const src = mediaPath(s);
+        const fileHint = s.is_remote ? ('<div class="fileHint">file: '+esc(s.filename || "")+'</div>') : "";
         return \`
           <div class="cardPane \${pos}\${remoteClass}">
             <div class="cardHero">
-              <img loading="eager" referrerpolicy="no-referrer" alt="\${esc(s.name)}" src="\${esc(s.local_path)}" />
+              <img loading="eager" referrerpolicy="no-referrer" alt="\${esc(s.name)}" src="\${esc(src)}" />
             </div>
             <div class="cardFooter">
-              <a class="cardTitle nameLink" href="\${esc(s.local_path)}" target="_blank" rel="noreferrer" title="\${esc(s.name)}">\${esc(s.name)}</a>
+              <a class="cardTitle nameLink" href="\${esc(src)}" target="_blank" rel="noreferrer" title="\${esc(s.name)}">\${esc(s.name)}</a>
+              \${fileHint}
               <div class="iconBar">
                 \${prog}
-                <a class="iconLink" href="\${esc(s.local_path)}" download="\${esc(s.filename)}" title="\${TXT.downloadTitle}">💾</a>
-                <a class="iconLink" href="#" data-role="lens" data-img="\${esc(s.local_path)}" data-name="\${esc(s.name)}" title="\${TXT.googleSearchTitle}">🔎</a>
+                <a class="iconLink" href="\${esc(src)}" download="\${esc(s.filename)}" title="\${TXT.downloadTitle}">💾</a>
+                <a class="iconLink" href="#" data-role="lens" data-img="\${esc(src)}" data-name="\${esc(s.name)}" title="\${TXT.googleSearchTitle}">🔎</a>
               </div>
             </div>
           </div>\`;
@@ -913,20 +955,23 @@ function buildExportIndexHtml(title, stickersMeta) {
       const frag = document.createDocumentFragment();
       for(let i=0;i<items.length;i++){
         const s = items[i];
+        const src = mediaPath(s);
+        const fileHint = s.is_remote ? ('<div class="fileHint">file: '+esc(s.filename || "")+'</div>') : "";
         const d = document.createElement("div");
-        d.className = "card" + (s.is_remote ? " isRemote" : "");
+        d.className = "card" + (s.is_remote_active ? " isRemote" : "");
         d.innerHTML = \`
-          <a class="thumbLink" data-role="open-card" data-idx="\${i}" href="\${esc(s.local_path)}" target="_blank" rel="noreferrer">
-            <div class="thumb"><img loading="lazy" src="\${esc(s.local_path)}" alt="\${esc(s.name)}"/></div>
+          <a class="thumbLink" data-role="open-card" data-idx="\${i}" href="\${esc(src)}" target="_blank" rel="noreferrer">
+            <div class="thumb"><img loading="lazy" src="\${esc(src)}" alt="\${esc(s.name)}"/></div>
           </a>
           <div class="meta">
             <div class="nameRow">
-              <a class="nameLink" href="\${esc(s.local_path)}" target="_blank" rel="noreferrer" title="\${esc(s.name)}">\${esc(s.name)}</a>
+              <a class="nameLink" href="\${esc(src)}" target="_blank" rel="noreferrer" title="\${esc(s.name)}">\${esc(s.name)}</a>
               <div class="iconBar">
-                <a class="iconLink" href="\${esc(s.local_path)}" download="\${esc(s.filename)}" title="\${TXT.downloadTitle}">💾</a>
-                <a class="iconLink" href="#" data-role="lens" data-img="\${esc(s.local_path)}" data-name="\${esc(s.name)}" title="\${TXT.googleSearchTitle}">🔎</a>
+                <a class="iconLink" href="\${esc(src)}" download="\${esc(s.filename)}" title="\${TXT.downloadTitle}">💾</a>
+                <a class="iconLink" href="#" data-role="lens" data-img="\${esc(src)}" data-name="\${esc(s.name)}" title="\${TXT.googleSearchTitle}">🔎</a>
               </div>
             </div>
+            \${fileHint}
           </div>\`;
         frag.appendChild(d);
       }
@@ -1009,9 +1054,12 @@ function buildExportIndexHtml(title, stickersMeta) {
       if(e.key==="ArrowRight"){ nextStep(); }
       if(e.key==="ArrowLeft"){ prevStep(); }
     });
-    applyEnglish();
-    setView(viewMode);
-    if(viewMode==="grid") render();
+    (async () => {
+      await prepareDisplayPaths();
+      applyEnglish();
+      setView(viewMode);
+      if(viewMode==="grid") render();
+    })();
   </script>
 </body>
 </html>`;
@@ -1081,14 +1129,23 @@ async function exportAlbumZip() {
         })();
         const base = slugifyFilename(s.name);
         const suffix = shortStableHash(`${s.name}\n${s.sourceUrl}`);
-        const filename = `${base}__${suffix}${ext}`;
+        let filename = `${base}__${suffix}${ext}`;
+        let n = 1;
+        while (usedFilenames.has(filename)) {
+          filename = `${base}__${suffix}-${n}${ext}`;
+          n++;
+        }
+        usedFilenames.add(filename);
+        const localPath = `images/${filename}`;
+        failures[failures.length - 1].filename = filename;
         stickerMeta.push({
           name: s.name,
           name_lc: s.nameLc,
           source_url: s.sourceUrl,
           resolved_url: url,
           filename,
-          local_path: url,
+          local_path: localPath,
+          remote_url: url,
           ext,
           is_remote: true,
         });
@@ -1122,10 +1179,14 @@ async function exportAlbumZip() {
       const MAX_LIST = 40;
       const shown = failures.slice(0, MAX_LIST);
       const rest = failures.length - shown.length;
-      const lines = shown.map((f) => `- ${f.name} — ${f.url}`);
+      const lines = shown.map((f) => `- ${f.name} — save as: ${f.filename || "unknown"} — source: ${f.url}`);
       if (rest > 0) lines.push(`- ...and ${rest} more (see console for the full list)`);
       console.warn("Export failures (full list):", failures);
-      alert(`Some images could not be downloaded (${failures.length}).\n\n${lines.join("\n")}`);
+      alert(
+        `Some images could not be downloaded (${failures.length}).\n` +
+        `You can manually download them and place into the images/ folder using the exact filename below.\n\n` +
+        `${lines.join("\n")}`
+      );
     }
   } finally {
     els.exportAlbum.disabled = false;
