@@ -272,7 +272,8 @@ const IMAGE_OBJECT_URL_CACHE = new Map(); // url -> objectURL
 const IMAGE_INFLIGHT_CACHE = new Map(); // url -> Promise<Blob>
 const RESOLVED_URL_CACHE = new Map(); // url -> resolvedUrl
 const RESOLVE_INFLIGHT_CACHE = new Map(); // url -> Promise<string>
-const IMAGE_CACHE_MAX_ITEMS = 300;
+// Cache policy: keep everything in memory for this session (no eviction).
+const IMAGE_CACHE_MAX_ITEMS = Number.POSITIVE_INFINITY;
 const THUMB_FETCH_CONCURRENCY = 6;
 const RESOLVE_CONCURRENCY = 8;
 const EXPORT_FETCH_CONCURRENCY = 6;
@@ -321,17 +322,7 @@ function normalizeQuery(q) {
 
 function putImageBlobCache(url, blob) {
   if (!url || !blob) return;
-  if (IMAGE_BLOB_CACHE.has(url)) IMAGE_BLOB_CACHE.delete(url);
   IMAGE_BLOB_CACHE.set(url, blob);
-  if (IMAGE_BLOB_CACHE.size > IMAGE_CACHE_MAX_ITEMS) {
-    const oldestUrl = IMAGE_BLOB_CACHE.keys().next().value;
-    IMAGE_BLOB_CACHE.delete(oldestUrl);
-    const oldObj = IMAGE_OBJECT_URL_CACHE.get(oldestUrl);
-    if (oldObj) {
-      URL.revokeObjectURL(oldObj);
-      IMAGE_OBJECT_URL_CACHE.delete(oldestUrl);
-    }
-  }
 }
 
 function getObjectUrlForBlob(url, blob) {
@@ -342,9 +333,7 @@ function getObjectUrlForBlob(url, blob) {
 }
 
 function clearObjectUrlCache() {
-  for (const obj of IMAGE_OBJECT_URL_CACHE.values()) {
-    URL.revokeObjectURL(obj);
-  }
+  // Intentionally do not revoke object URLs during the session.
   IMAGE_OBJECT_URL_CACHE.clear();
 }
 
@@ -600,6 +589,37 @@ async function fetchBlob(url) {
     return await p;
   } finally {
     IMAGE_INFLIGHT_CACHE.delete(url);
+  }
+}
+
+function guessExtFromUrl(url) {
+  try {
+    const p = new URL(url).pathname.toLowerCase();
+    const m = p.match(/\.(png|jpg|jpeg|gif|webp)$/);
+    if (m) return `.${m[1]}`;
+  } catch {
+    // ignore
+  }
+  return "";
+}
+
+async function downloadAsFile(url, baseName) {
+  const resolved = await resolveForDisplay(url);
+  const blob = await fetchBlob(resolved);
+  const ext = guessExtFromUrl(resolved) || (blob.type ? `.${blob.type.split("/")[1]}` : "");
+  const safeBase = slugifyFilename(baseName || "image");
+  const filename = `${safeBase}${ext || ""}`;
+  const objUrl = URL.createObjectURL(blob);
+  try {
+    const a = document.createElement("a");
+    a.href = objUrl;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  } finally {
+    // Safe to revoke right after triggering the download.
+    setTimeout(() => URL.revokeObjectURL(objUrl), 5000);
   }
 }
 
@@ -887,8 +907,7 @@ async function resolveAll() {
 // ---- File loading ----
 
 async function loadFromText(text) {
-  // New import should release any previously created object URLs and blobs.
-  clearAllImageCaches();
+  // Do not clear caches on import: once loaded, keep in memory for the session.
   const source = new MudaeTxtSource(text || "");
   const loaded = await source.load();
 
@@ -932,6 +951,20 @@ els.lang.addEventListener("change", () => setLang(els.lang.value));
 els.q.addEventListener("input", debouncedRenderFiltered);
 els.exportAlbum.addEventListener("click", () => exportAlbumZip());
 els.pasteBtn.addEventListener("click", () => openPasteModal());
+
+// Force-download for cross-origin images (avoids opening Imgur pages, etc.)
+document.addEventListener("click", (e) => {
+  const a = e.target && e.target.closest ? e.target.closest('a[data-role="download"]') : null;
+  if (!a) return;
+  e.preventDefault();
+  const href = a.getAttribute("href") || "";
+  const card = a.closest(".card");
+  const nameEl = card ? card.querySelector(".nameLink") : null;
+  const name = nameEl ? nameEl.textContent : "image";
+  downloadAsFile(href, name).catch((err) => {
+    console.warn("Download failed", err);
+  });
+});
 
 els.pasteClose.addEventListener("click", () => closePasteModal());
 els.pasteCancel.addEventListener("click", () => closePasteModal());
