@@ -211,6 +211,26 @@ async function resolveImageUrl(url) {
   if (!u) return u;
   if (looksLikeDirectImage(u)) return u;
 
+  // Imgur: convert known patterns to direct i.imgur.com URLs.
+  // - https://imgur.com/<id>.<ext>   -> https://i.imgur.com/<id>.<ext>
+  // - https://imgur.com/<id>         -> https://i.imgur.com/<id>.png (best-effort)
+  // - https://i.imgur.com/<id>.<ext> -> (already direct)
+  try {
+    const parsed = new URL(u);
+    const host = parsed.hostname.toLowerCase();
+    if (host === "imgur.com" || host === "www.imgur.com" || host === "m.imgur.com") {
+      const m2 = parsed.pathname.match(/^\/([A-Za-z0-9]+)(\.(png|jpg|jpeg|gif|webp))?$/i);
+      if (m2) {
+        const id = m2[1];
+        const ext = m2[2] || ".png";
+        return `https://i.imgur.com/${id}${ext}`;
+      }
+    }
+    if (host === "i.imgur.com") return u;
+  } catch {
+    // ignore URL parse errors
+  }
+
   // Imgur page -> og:image
   const m = u.match(/^https?:\/\/(www\.)?imgur\.com\/([A-Za-z0-9]+)([/?#].*)?$/);
   if (m) {
@@ -383,6 +403,18 @@ async function hydrateThumbElement(thumbEl) {
     const imgUrl = await resolveForDisplay(originalUrl);
     // Keep the resolved url so later steps (like export) can reuse if needed.
     thumbEl.dataset.imgUrl = imgUrl;
+    const stickerId = thumbEl.dataset.stickerId || "";
+    if (stickerId) {
+      const s = stickers.find((x) => x._id === stickerId);
+      if (s) s.resolvedUrl = imgUrl;
+    }
+    const card = thumbEl.closest(".card");
+    if (card) {
+      const aSrc = card.querySelector('a[data-role="src"]');
+      const aDl = card.querySelector('a[data-role="download"]');
+      if (aSrc) aSrc.href = imgUrl;
+      if (aDl) aDl.href = imgUrl;
+    }
     const blob = await fetchBlob(imgUrl);
     const img = document.createElement("img");
     img.loading = "lazy";
@@ -452,14 +484,14 @@ async function renderFiltered() {
     const card = document.createElement("div");
     card.className = "card";
     card.innerHTML = `
-      <div class="thumb" data-img-url="${escHtml(s.resolvedUrl || s.sourceUrl)}" data-img-alt="${escHtml(s.name)}" data-hydrated="0">
+      <div class="thumb" data-sticker-id="${escHtml(s._id)}" data-img-url="${escHtml(s.resolvedUrl || s.sourceUrl)}" data-img-alt="${escHtml(s.name)}" data-hydrated="0">
         <div class="ph">...</div>
       </div>
       <div class="meta">
         <div class="name" title="${escHtml(s.name)}">${escHtml(s.name)}</div>
         <div class="small">
-          <a class="link" href="${escHtml(s.resolvedUrl || s.sourceUrl)}" target="_blank" rel="noreferrer">src</a>
-          <a class="link" href="${escHtml(s.resolvedUrl || s.sourceUrl)}" download="${escHtml(s.name)}">${t().singleDownload}</a>
+          <a class="link" data-role="src" href="${escHtml(s.resolvedUrl || s.sourceUrl)}" target="_blank" rel="noreferrer">src</a>
+          <a class="link" data-role="download" href="${escHtml(s.resolvedUrl || s.sourceUrl)}" download="${escHtml(s.name)}">${t().singleDownload}</a>
           <a class="link" href="https://www.google.com/search?q=${encodeURIComponent(s.name)}" target="_blank" rel="noreferrer" title="${escHtml(t().googleSearchTitle)}">🔎 ${escHtml(t().googleSearchLabel)}</a>
         </div>
       </div>
