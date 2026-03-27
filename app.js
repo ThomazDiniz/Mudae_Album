@@ -584,6 +584,7 @@ function buildExportIndexHtml(title, stickersMeta) {
     *{box-sizing:border-box;}
     body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;background:radial-gradient(1200px 800px at 20% 0%, #111827 0%, var(--bg) 50%, #070a10 100%);color:var(--text);}
     .wrap{max-width:1200px;margin:0 auto;padding:16px;}
+    .wrapFull{max-width:90vw;}
     header{position:sticky;top:0;z-index:10;background:rgba(11,15,23,.85);backdrop-filter:blur(10px);border-bottom:1px solid rgba(36,50,74,.6);}
     .topbar{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap;}
     .brand{display:flex;gap:10px;align-items:center;}
@@ -623,7 +624,7 @@ function buildExportIndexHtml(title, stickersMeta) {
       </div>
     </div>
   </header>
-  <main class="wrap">
+  <main class="wrap wrapFull">
     <div class="grid" id="grid"></div>
   </main>
   <script>
