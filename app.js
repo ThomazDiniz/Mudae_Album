@@ -159,9 +159,9 @@ async function renderCard() {
   if (offLeft) offLeft.resolvedUrl = offLeftUrl;
   if (offRight) offRight.resolvedUrl = offRightUrl;
 
-  const paneHtml = (pos, s, url, isCenter) => {
+  const paneHtml = (pos, s, url, idx) => {
     if (!s || !url) return `<div class="cardPane ${pos}"></div>`;
-    const prog = isCenter ? `<span class="cardProgress">${cardIndex + 1} / ${items.length}</span>` : "";
+    const prog = `<span class="cardProgress">${idx + 1} / ${items.length}</span>`;
     return `
       <div class="cardPane ${pos}">
         <div class="cardHero">
@@ -181,11 +181,11 @@ async function renderCard() {
 
   els.cardSurface.innerHTML = `
     <div class="cardDeck">
-      ${paneHtml("is-off-left", offLeft, offLeftUrl, false)}
-      ${paneHtml("is-left", left, leftUrl, false)}
-      ${paneHtml("is-center", center, centerUrl, true)}
-      ${paneHtml("is-right", right, rightUrl, false)}
-      ${paneHtml("is-off-right", offRight, offRightUrl, false)}
+      ${paneHtml("is-off-left", offLeft, offLeftUrl, cardIndex - 2)}
+      ${paneHtml("is-left", left, leftUrl, cardIndex - 1)}
+      ${paneHtml("is-center", center, centerUrl, cardIndex)}
+      ${paneHtml("is-right", right, rightUrl, cardIndex + 1)}
+      ${paneHtml("is-off-right", offRight, offRightUrl, cardIndex + 2)}
       <div class="cardTapZone" id="cardTapZone">
         <div data-dir="-1"></div>
         <div data-dir="1"></div>
@@ -845,9 +845,11 @@ function buildExportIndexHtml(title, stickersMeta) {
       const center = items[cardIndex];
       const left = cardIndex>0 ? items[cardIndex-1] : null;
       const right = cardIndex<items.length-1 ? items[cardIndex+1] : null;
-      function pane(pos, s){
+      const offLeft = cardIndex>1 ? items[cardIndex-2] : null;
+      const offRight = cardIndex<items.length-2 ? items[cardIndex+2] : null;
+      function pane(pos, s, idx){
         if(!s) return '<div class="cardPane '+pos+'"></div>';
-        const prog = pos==="is-center" ? ('<span class="cardProgress">'+(cardIndex+1)+' / '+items.length+'</span>') : '';
+        const prog = '<span class="cardProgress">'+(idx+1)+' / '+items.length+'</span>';
         return \`
           <div class="cardPane \${pos}">
             <div class="cardHero">
@@ -865,9 +867,11 @@ function buildExportIndexHtml(title, stickersMeta) {
       }
       cardSurface.innerHTML = \`
         <div class="cardDeck">
-          \${pane("is-left", left)}
-          \${pane("is-center", center)}
-          \${pane("is-right", right)}
+          \${pane("is-off-left", offLeft, cardIndex-2)}
+          \${pane("is-left", left, cardIndex-1)}
+          \${pane("is-center", center, cardIndex)}
+          \${pane("is-right", right, cardIndex+1)}
+          \${pane("is-off-right", offRight, cardIndex+2)}
           <div class="cardTapZone" id="cardTapZone">
             <div data-dir="-1"></div>
             <div data-dir="1"></div>
