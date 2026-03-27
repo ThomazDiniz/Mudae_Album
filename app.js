@@ -776,18 +776,18 @@ function buildExportIndexHtml(title, stickersMeta) {
     /* Card (tinder) view */
     .cardView{margin-top:14px;}
     .cardView[hidden]{display:none;}
-    .cardStage{position:relative;height:calc(100vh - 120px);min-height:520px;max-width:900px;margin:0 auto;border:1px solid rgba(36,50,74,.8);border-radius:14px;overflow:hidden;background:linear-gradient(180deg, rgba(17,24,39,.65), rgba(15,23,42,.65));box-shadow:0 10px 25px rgba(0,0,0,.25);}
+    .cardStage{position:relative;height:calc(100vh - 120px);min-height:520px;max-width:90vw;margin:0 auto;border:1px solid rgba(36,50,74,.8);border-radius:14px;overflow:hidden;background:linear-gradient(180deg, rgba(17,24,39,.65), rgba(15,23,42,.65));box-shadow:0 10px 25px rgba(0,0,0,.25);}
     .cardSurface{position:absolute;inset:0;display:grid;grid-template-rows:1fr auto;}
     .cardDeck{position:absolute;inset:0;display:grid;place-items:center;perspective:1200px;}
     .cardPane{position:absolute;width:min(680px,86%);height:100%;border-radius:14px;overflow:hidden;background:rgba(0,0,0,.12);border:1px solid rgba(36,50,74,.55);box-shadow:0 18px 60px rgba(0,0,0,.35);transform-style:preserve-3d;transition:transform 260ms ease, opacity 260ms ease, filter 260ms ease;display:grid;grid-template-rows:1fr auto;}
-    .cardPane.is-left{transform:translateX(-74%) rotateY(26deg) scale(0.86);opacity:.55;filter:blur(0.2px);}
+    .cardPane.is-left{transform:translateX(-94%) rotateY(26deg) scale(0.86);opacity:.55;filter:blur(0.2px);}
     .cardPane.is-center{transform:translateX(0) rotateY(0) scale(1);opacity:1;}
-    .cardPane.is-right{transform:translateX(74%) rotateY(-26deg) scale(0.86);opacity:.55;filter:blur(0.2px);}
+    .cardPane.is-right{transform:translateX(94%) rotateY(-26deg) scale(0.86);opacity:.55;filter:blur(0.2px);}
     .cardStage.anim-next .cardPane.is-left{transform:translateX(-120%) rotateY(35deg) scale(0.84);opacity:0;}
-    .cardStage.anim-next .cardPane.is-center{transform:translateX(-74%) rotateY(26deg) scale(0.86);opacity:.55;filter:blur(0.2px);}
+    .cardStage.anim-next .cardPane.is-center{transform:translateX(-94%) rotateY(26deg) scale(0.86);opacity:.55;filter:blur(0.2px);}
     .cardStage.anim-next .cardPane.is-right{transform:translateX(0) rotateY(0) scale(1);opacity:1;filter:none;}
     .cardStage.anim-prev .cardPane.is-right{transform:translateX(120%) rotateY(-35deg) scale(0.84);opacity:0;}
-    .cardStage.anim-prev .cardPane.is-center{transform:translateX(74%) rotateY(-26deg) scale(0.86);opacity:.55;filter:blur(0.2px);}
+    .cardStage.anim-prev .cardPane.is-center{transform:translateX(94%) rotateY(-26deg) scale(0.86);opacity:.55;filter:blur(0.2px);}
     .cardStage.anim-prev .cardPane.is-left{transform:translateX(0) rotateY(0) scale(1);opacity:1;filter:none;}
     .cardHero{position:relative;overflow:hidden;background:rgba(0,0,0,.25);}
     .cardHero img{width:100%;height:100%;object-fit:contain;display:block;background:rgba(0,0,0,.35);}
