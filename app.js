@@ -862,7 +862,7 @@ function buildExportIndexHtml(title, stickersMeta) {
               <div class="iconBar">
                 \${prog}
                 <a class="iconLink" href="\${esc(s.local_path)}" download="\${esc(s.filename)}" title="\${TXT.downloadTitle}">💾</a>
-                <a class="iconLink" href="\${googleTextAndImageUrl(s.name, s.resolved_url || s.source_url)}" target="_blank" rel="noreferrer" title="\${TXT.googleSearchTitle}">🔎</a>
+                <a class="iconLink" href="#" data-role="lens" data-img="\${esc(s.local_path)}" data-name="\${esc(s.name)}" title="\${TXT.googleSearchTitle}">🔎</a>
               </div>
             </div>
           </div>\`;
@@ -922,7 +922,7 @@ function buildExportIndexHtml(title, stickersMeta) {
               <a class="nameLink" href="\${esc(s.local_path)}" target="_blank" rel="noreferrer" title="\${esc(s.name)}">\${esc(s.name)}</a>
               <div class="iconBar">
                 <a class="iconLink" href="\${esc(s.local_path)}" download="\${esc(s.filename)}" title="\${TXT.downloadTitle}">💾</a>
-                <a class="iconLink" href="\${googleTextAndImageUrl(s.name, s.resolved_url || s.source_url)}" target="_blank" rel="noreferrer" title="\${TXT.googleSearchTitle}">🔎</a>
+                <a class="iconLink" href="#" data-role="lens" data-img="\${esc(s.local_path)}" data-name="\${esc(s.name)}" title="\${TXT.googleSearchTitle}">🔎</a>
               </div>
             </div>
           </div>\`;
@@ -930,6 +930,34 @@ function buildExportIndexHtml(title, stickersMeta) {
       }
       grid.appendChild(frag);
     }
+
+    async function openLensFromLocalImage(localPath, name){
+      try{
+        const resp = await fetch(localPath);
+        const blob = await resp.blob();
+        if(navigator.clipboard && window.ClipboardItem){
+          await navigator.clipboard.write([new ClipboardItem({ [blob.type || "image/png"]: blob })]);
+          window.open("https://lens.google.com/", "_blank", "noopener,noreferrer");
+          alert("Image copied to clipboard. Paste it into Google Lens (Ctrl+V).");
+          return;
+        }
+      }catch(e){
+        console.warn("Lens clipboard failed", e);
+      }
+      // Fallback: open the local image itself (user can drag/drop it into Lens)
+      window.open(localPath, "_blank", "noopener,noreferrer");
+      alert("Your browser blocked automatic image copy. The image was opened in a new tab so you can drag/drop it into Google Lens.");
+    }
+
+    document.addEventListener("click", (e) => {
+      const a = e.target && e.target.closest ? e.target.closest('a[data-role="lens"]') : null;
+      if(!a) return;
+      e.preventDefault();
+      const img = a.getAttribute("data-img") || "";
+      const name = a.getAttribute("data-name") || "";
+      if(!img) return;
+      openLensFromLocalImage(img, name);
+    });
     // Clicking any grid image opens Card view at that index.
     grid.addEventListener("click", (e) => {
       if(viewMode!=="grid") return;
@@ -999,6 +1027,7 @@ async function exportAlbumZip() {
     const stickerMeta = [];
     let ok = 0;
     let fail = 0;
+    const failures = [];
     const usedFilenames = new Set();
     await mapWithConcurrency(stickers, EXPORT_FETCH_CONCURRENCY, async (s, i) => {
       setStatus(t().statusFetching(i + 1, stickers.length));
@@ -1037,6 +1066,7 @@ async function exportAlbumZip() {
         ok++;
       } catch (e) {
         fail++;
+        failures.push({ name: s.name, url });
         console.warn("Export fetch failed", s, e);
       }
     });
@@ -1062,6 +1092,16 @@ async function exportAlbumZip() {
     a.remove();
     setTimeout(() => URL.revokeObjectURL(a.href), 5000);
     setStatus(t().statusDoneWith(ok, fail));
+
+    if (failures.length) {
+      const MAX_LIST = 40;
+      const shown = failures.slice(0, MAX_LIST);
+      const rest = failures.length - shown.length;
+      const lines = shown.map((f) => `- ${f.name} — ${f.url}`);
+      if (rest > 0) lines.push(`- ...and ${rest} more (see console for the full list)`);
+      console.warn("Export failures (full list):", failures);
+      alert(`Some images could not be downloaded (${failures.length}).\n\n${lines.join("\n")}`);
+    }
   } finally {
     els.exportAlbum.disabled = false;
     setTimeout(() => setStatus(""), 6000);
