@@ -220,7 +220,7 @@ async function resolveImageUrl(url) {
 }
 
 async function fetchText(url) {
-  const resp = await fetch(url, { cache: "no-store" });
+  const resp = await fetch(url, { cache: "no-store", referrerPolicy: "no-referrer" });
   if (!resp.ok) throw new Error(`HTTP ${resp.status} fetching ${url}`);
   return await resp.text();
 }
@@ -302,6 +302,7 @@ async function renderFiltered() {
         const img = document.createElement("img");
         img.loading = "lazy";
         img.alt = s.name;
+        img.referrerPolicy = "no-referrer";
         img.src = imgUrl;
         thumb.innerHTML = "";
         thumb.appendChild(img);
@@ -332,7 +333,7 @@ function sleep(ms) {
 }
 
 async function fetchBlob(url) {
-  const resp = await fetch(url, { cache: "no-store" });
+  const resp = await fetch(url, { cache: "no-store", referrerPolicy: "no-referrer" });
   if (!resp.ok) throw new Error(`HTTP ${resp.status} ${url}`);
   return await resp.blob();
 }
