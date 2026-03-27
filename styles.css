@@ -189,17 +189,21 @@ input[type="file"]{ display:none; }
   padding:12px 12px 14px;
   border-top:1px solid rgba(36,50,74,.6);
   display:flex;
-  justify-content:space-between;
+  justify-content:center;
   align-items:center;
   gap:10px;
 }
 .cardTitle{
-  font-weight:750;
+  font-weight:800;
   letter-spacing:.2px;
+  font-size:16px;
   overflow:hidden;
   text-overflow:ellipsis;
   white-space:nowrap;
+  text-align:center;
 }
+.cardFooter .nameLink{ text-align:center; }
+.cardFooter .iconBar{ margin-left: 10px; }
 .cardNav{
   position:absolute;
   top:50%;
@@ -218,12 +222,16 @@ input[type="file"]{ display:none; }
 .cardNav:hover{ border-color:rgba(96,165,250,.8); }
 .cardTapZone{
   position:absolute;
-  inset:0;
+  left:0;
+  right:0;
+  top:0;
+  bottom:64px; /* don't cover footer/buttons */
   display:grid;
   grid-template-columns: 1fr 1fr;
   z-index:4;
+  pointer-events:none;
 }
-.cardTapZone > div{ cursor:pointer; }
+.cardTapZone > div{ cursor:pointer; pointer-events:auto; }
 .card{
   border:1px solid rgba(36,50,74,.8);
   border-radius:14px;

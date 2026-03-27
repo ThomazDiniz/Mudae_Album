@@ -762,14 +762,14 @@ function buildExportIndexHtml(title, stickersMeta) {
     .cardPane.is-right{transform:translateX(74%) rotateY(-26deg) scale(0.86);opacity:.55;filter:blur(0.2px);}
     .cardHero{position:relative;overflow:hidden;background:rgba(0,0,0,.25);}
     .cardHero img{width:100%;height:100%;object-fit:contain;display:block;background:rgba(0,0,0,.35);}
-    .cardFooter{padding:12px 12px 14px;border-top:1px solid rgba(36,50,74,.6);display:flex;justify-content:space-between;align-items:center;gap:10px;}
-    .cardTitle{font-weight:750;letter-spacing:.2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+    .cardFooter{padding:12px 12px 14px;border-top:1px solid rgba(36,50,74,.6);display:flex;justify-content:center;align-items:center;gap:10px;}
+    .cardTitle{font-weight:800;letter-spacing:.2px;font-size:16px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:center;}
     .cardNav{position:absolute;top:50%;transform:translateY(-50%);width:44px;height:44px;border-radius:14px;border:1px solid rgba(36,50,74,.9);background:rgba(17,24,39,.65);color:var(--text);cursor:pointer;z-index:5;}
     .cardNav.left{left:10px;}
     .cardNav.right{right:10px;}
     .cardNav:hover{border-color:rgba(96,165,250,.8);}
-    .cardTapZone{position:absolute;inset:0;display:grid;grid-template-columns:1fr 1fr;z-index:4;}
-    .cardTapZone>div{cursor:pointer;}
+    .cardTapZone{position:absolute;left:0;right:0;top:0;bottom:64px;display:grid;grid-template-columns:1fr 1fr;z-index:4;pointer-events:none;}
+    .cardTapZone>div{cursor:pointer;pointer-events:auto;}
   </style>
 </head>
 <body>
