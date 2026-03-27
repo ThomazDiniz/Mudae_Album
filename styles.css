@@ -110,6 +110,75 @@ input[type="file"]{ display:none; }
   gap:12px;
   margin-top:14px;
 }
+.cardView{ margin-top:14px; }
+.cardView[hidden]{ display:none; }
+.cardStage{
+  position:relative;
+  height: calc(100vh - 120px);
+  min-height: 520px;
+  border:1px solid rgba(36,50,74,.8);
+  border-radius:14px;
+  overflow:hidden;
+  background:linear-gradient(180deg, rgba(17,24,39,.65), rgba(15,23,42,.65));
+  box-shadow:0 10px 25px rgba(0,0,0,.25);
+}
+.cardSurface{
+  position:absolute;
+  inset:0;
+  display:grid;
+  grid-template-rows: 1fr auto;
+}
+.cardHero{
+  position:relative;
+  overflow:hidden;
+  background:rgba(0,0,0,.25);
+}
+.cardHero img{
+  width:100%;
+  height:100%;
+  object-fit:contain;
+  display:block;
+  background:rgba(0,0,0,.35);
+}
+.cardFooter{
+  padding:12px 12px 14px;
+  border-top:1px solid rgba(36,50,74,.6);
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:10px;
+}
+.cardTitle{
+  font-weight:750;
+  letter-spacing:.2px;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.cardNav{
+  position:absolute;
+  top:50%;
+  transform:translateY(-50%);
+  width:44px;
+  height:44px;
+  border-radius:14px;
+  border:1px solid rgba(36,50,74,.9);
+  background:rgba(17,24,39,.65);
+  color:var(--text);
+  cursor:pointer;
+  z-index:5;
+}
+.cardNav.left{ left:10px; }
+.cardNav.right{ right:10px; }
+.cardNav:hover{ border-color:rgba(96,165,250,.8); }
+.cardTapZone{
+  position:absolute;
+  inset:0;
+  display:grid;
+  grid-template-columns: 1fr 1fr;
+  z-index:4;
+}
+.cardTapZone > div{ cursor:pointer; }
 .card{
   border:1px solid rgba(36,50,74,.8);
   border-radius:14px;

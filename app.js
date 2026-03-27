@@ -13,9 +13,15 @@ const els = {
   q: $("q"),
   count: $("count"),
   countLabel: $("countLabel"),
+  viewToggle: $("viewToggle"),
   exportAlbum: $("exportAlbum"),
   status: $("status"),
   grid: $("grid"),
+  cardView: $("cardView"),
+  cardStage: $("cardStage"),
+  cardSurface: $("cardSurface"),
+  cardPrev: $("cardPrev"),
+  cardNext: $("cardNext"),
   emptyState: $("emptyState"),
   emptyTitle: $("emptyTitle"),
   emptyText: $("emptyText"),
@@ -35,6 +41,10 @@ const I18N = {
     searchPlaceholder: "Search...",
     exportAlbum: "Export album (ZIP)",
     exportAlbumTitle: "Creates a zip with index.html + images/ (shareable)",
+    viewGrid: "Grid",
+    viewCard: "Cards",
+    viewToggleTitle: "Switch view",
+    cardHint: "Click left/right to navigate",
     pasteText: "Import",
     pasteTextTitle: "Paste your mudae.txt content instead of selecting a file",
     emptyTitle: "Load your list",
@@ -66,6 +76,10 @@ const I18N = {
     searchPlaceholder: "Buscar...",
     exportAlbum: "Exportar álbum (ZIP)",
     exportAlbumTitle: "Cria um zip com index.html + images/ (compartilhável)",
+    viewGrid: "Grade",
+    viewCard: "Cartas",
+    viewToggleTitle: "Trocar visualização",
+    cardHint: "Clique esquerda/direita para navegar",
     pasteText: "Importar",
     pasteTextTitle: "Cole o conteúdo do mudae.txt em vez de selecionar um arquivo",
     emptyTitle: "Carregue sua lista",
@@ -121,6 +135,7 @@ function setLang(next) {
   els.q.placeholder = t().searchPlaceholder;
   els.exportAlbum.textContent = t().exportAlbum;
   els.exportAlbum.title = t().exportAlbumTitle;
+  updateViewToggleLabel();
   els.countLabel.textContent = t().countLabel;
   els.emptyTitle.textContent = t().emptyTitle;
   els.emptyText.innerHTML = t().emptyText;
@@ -131,6 +146,99 @@ function setLang(next) {
   els.pasteLoad.textContent = t().pasteLoad;
 
   renderFiltered();
+}
+
+let viewMode = "grid"; // "grid" | "card"
+let cardIndex = 0;
+
+function updateViewToggleLabel() {
+  if (!els.viewToggle) return;
+  els.viewToggle.title = t().viewToggleTitle;
+  els.viewToggle.textContent = viewMode === "grid" ? t().viewCard : t().viewGrid;
+}
+
+function getFilteredItems() {
+  const term = normalizeQuery(els.q.value);
+  const parts = term ? term.split(/\s+/g).filter(Boolean) : [];
+  return !parts.length ? stickers : stickers.filter((s) => parts.every((p) => (s.nameLc || "").includes(p)));
+}
+
+function setViewMode(next) {
+  viewMode = next === "card" ? "card" : "grid";
+  updateViewToggleLabel();
+  if (viewMode === "card") {
+    els.grid.style.display = "none";
+    els.cardView.hidden = false;
+    cardIndex = 0;
+    renderCard();
+  } else {
+    els.grid.style.display = "";
+    els.cardView.hidden = true;
+    renderFiltered().catch(() => {});
+  }
+}
+
+function clampCardIndex(items) {
+  if (!items.length) return 0;
+  if (cardIndex < 0) cardIndex = 0;
+  if (cardIndex >= items.length) cardIndex = items.length - 1;
+  return cardIndex;
+}
+
+async function renderCard() {
+  const items = getFilteredItems();
+  els.count.textContent = String(items.length);
+  els.countLabel.textContent = t().countLabel;
+  els.emptyState.style.display = stickers.length ? "none" : "block";
+
+  if (!items.length) {
+    els.cardSurface.innerHTML = `<div class="cardFooter"><div class="cardTitle">0</div><div class="iconBar"></div></div>`;
+    return;
+  }
+  clampCardIndex(items);
+  const s = items[cardIndex];
+  const displayUrl = s.resolvedUrl || s.sourceUrl;
+  const resolved = await resolveForDisplay(displayUrl);
+  s.resolvedUrl = resolved;
+
+  els.cardSurface.innerHTML = `
+    <div class="cardHero">
+      <div class="cardTapZone" id="cardTapZone">
+        <div data-dir="-1"></div>
+        <div data-dir="1"></div>
+      </div>
+      <img loading="eager" referrerpolicy="no-referrer" alt="${escHtml(s.name)}" src="${escHtml(resolved)}" />
+    </div>
+    <div class="cardFooter">
+      <a class="cardTitle nameLink" data-role="open" href="${escHtml(resolved)}" target="_blank" rel="noreferrer" title="${escHtml(s.name)}">${escHtml(s.name)}</a>
+      <div class="iconBar">
+        <a class="iconLink" data-role="download" href="${escHtml(resolved)}" download="${escHtml(s.name)}" title="${escHtml(t().downloadTitle)}">💾</a>
+        <a class="iconLink" href="https://www.google.com/search?q=${encodeURIComponent(s.name)}" target="_blank" rel="noreferrer" title="${escHtml(t().googleSearchTitle)}">🔎</a>
+      </div>
+    </div>
+  `;
+  const tap = $("cardTapZone");
+  if (tap) {
+    tap.addEventListener("click", (e) => {
+      const dir = e.target && e.target.dataset ? Number(e.target.dataset.dir) : 0;
+      if (dir === 1) nextCard();
+      else if (dir === -1) prevCard();
+    });
+  }
+}
+
+function nextCard() {
+  const items = getFilteredItems();
+  if (!items.length) return;
+  cardIndex = Math.min(cardIndex + 1, items.length - 1);
+  renderCard().catch(() => {});
+}
+
+function prevCard() {
+  const items = getFilteredItems();
+  if (!items.length) return;
+  cardIndex = Math.max(cardIndex - 1, 0);
+  renderCard().catch(() => {});
 }
 
 // ---- Source architecture (future-proof) ----
@@ -578,6 +686,7 @@ function buildExportIndexHtml(title, stickersMeta) {
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="referrer" content="no-referrer" />
   <title>${safeTitle}</title>
   <style>
     :root{--bg:#0b0f17;--panel:#111827;--panel2:#0f172a;--text:#e5e7eb;--muted:#9ca3af;--border:#24324a;--accent:#60a5fa;}
@@ -595,15 +704,36 @@ function buildExportIndexHtml(title, stickersMeta) {
     select{padding:10px;}
     input{flex:1;min-width:240px;padding:10px 12px;background:rgba(17,24,39,.7);}
     input:focus{border-color:rgba(96,165,250,.8);box-shadow:0 0 0 4px rgba(96,165,250,.15);}
+    button{padding:10px 12px;border-radius:10px;border:1px solid rgba(36,50,74,.9);background:rgba(17,24,39,.9);color:var(--text);cursor:pointer;}
+    button:hover{border-color:rgba(96,165,250,.8);}
     .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;margin-top:14px;}
     .card{border:1px solid rgba(36,50,74,.8);border-radius:14px;overflow:hidden;background:linear-gradient(180deg, rgba(17,24,39,.65), rgba(15,23,42,.65));box-shadow:0 10px 25px rgba(0,0,0,.25);}
     .thumb{aspect-ratio:3/4;background:rgba(0,0,0,.25);display:grid;place-items:center;overflow:hidden;}
     .thumb img{width:100%;height:100%;object-fit:cover;display:block;}
+    .thumbLink{display:block;color:inherit;text-decoration:none;}
     .meta{padding:10px 10px 12px;display:flex;flex-direction:column;gap:6px;}
-    .name{font-size:13px;font-weight:650;line-height:1.2;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;min-height:32px;}
-    .small{font-size:12px;color:var(--muted);display:flex;gap:8px;justify-content:space-between;align-items:center;}
-    a{color:var(--accent);text-decoration:none;font-size:12px;}
-    a:hover{text-decoration:underline;}
+    .nameRow{display:flex;gap:8px;align-items:flex-start;}
+    .nameLink{flex:1;min-width:0;font-size:13px;font-weight:650;line-height:1.2;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;min-height:32px;color:var(--text);text-decoration:none;}
+    .nameLink:hover{text-decoration:underline;}
+    .iconBar{display:flex;gap:6px;align-items:center;flex:0 0 auto;}
+    .iconLink{width:28px;height:28px;display:inline-grid;place-items:center;border-radius:10px;border:1px solid rgba(36,50,74,.9);background:rgba(17,24,39,.75);color:var(--text);text-decoration:none;font-size:14px;line-height:1;}
+    .iconLink:hover{border-color:rgba(96,165,250,.8);}
+
+    /* Card (tinder) view */
+    .cardView{margin-top:14px;}
+    .cardView[hidden]{display:none;}
+    .cardStage{position:relative;height:calc(100vh - 120px);min-height:520px;border:1px solid rgba(36,50,74,.8);border-radius:14px;overflow:hidden;background:linear-gradient(180deg, rgba(17,24,39,.65), rgba(15,23,42,.65));box-shadow:0 10px 25px rgba(0,0,0,.25);}
+    .cardSurface{position:absolute;inset:0;display:grid;grid-template-rows:1fr auto;}
+    .cardHero{position:relative;overflow:hidden;background:rgba(0,0,0,.25);}
+    .cardHero img{width:100%;height:100%;object-fit:contain;display:block;background:rgba(0,0,0,.35);}
+    .cardFooter{padding:12px 12px 14px;border-top:1px solid rgba(36,50,74,.6);display:flex;justify-content:space-between;align-items:center;gap:10px;}
+    .cardTitle{font-weight:750;letter-spacing:.2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+    .cardNav{position:absolute;top:50%;transform:translateY(-50%);width:44px;height:44px;border-radius:14px;border:1px solid rgba(36,50,74,.9);background:rgba(17,24,39,.65);color:var(--text);cursor:pointer;z-index:5;}
+    .cardNav.left{left:10px;}
+    .cardNav.right{right:10px;}
+    .cardNav:hover{border-color:rgba(96,165,250,.8);}
+    .cardTapZone{position:absolute;inset:0;display:grid;grid-template-columns:1fr 1fr;z-index:4;}
+    .cardTapZone>div{cursor:pointer;}
   </style>
 </head>
 <body>
@@ -620,18 +750,26 @@ function buildExportIndexHtml(title, stickersMeta) {
             <option value="pt-BR">PT-BR</option>
           </select>
           <input id="q" type="search" autocomplete="off" />
+          <button id="viewToggle" type="button"></button>
         </div>
       </div>
     </div>
   </header>
   <main class="wrap wrapFull">
     <div class="grid" id="grid"></div>
+    <section id="cardView" class="cardView" hidden>
+      <div class="cardStage" id="cardStage">
+        <button class="cardNav left" id="cardPrev" type="button" aria-label="Previous">◀</button>
+        <button class="cardNav right" id="cardNext" type="button" aria-label="Next">▶</button>
+        <div class="cardSurface" id="cardSurface"></div>
+      </div>
+    </section>
   </main>
   <script>
     const STICKERS = ${payload};
     const I18N = {
-      "en": { countLabel:"stickers", search:"Search...", downloadTitle:"Download image", googleSearchTitle:"Search on Google (text/images)" },
-      "pt-BR": { countLabel:"figurinhas", search:"Buscar...", downloadTitle:"Baixar imagem", googleSearchTitle:"Pesquisar no Google (texto/imagens)" }
+      "en": { countLabel:"stickers", search:"Search...", downloadTitle:"Download image", googleSearchTitle:"Search on Google (text/images)", viewGrid:"Grid", viewCard:"Cards", viewToggleTitle:"Switch view" },
+      "pt-BR": { countLabel:"figurinhas", search:"Buscar...", downloadTitle:"Baixar imagem", googleSearchTitle:"Pesquisar no Google (texto/imagens)", viewGrid:"Grade", viewCard:"Cartas", viewToggleTitle:"Trocar visualização" }
     };
     function detectDefaultLang(){
       const saved = localStorage.getItem("mudae_album_lang");
@@ -644,9 +782,17 @@ function buildExportIndexHtml(title, stickersMeta) {
     const langSel = document.getElementById("lang");
     const q = document.getElementById("q");
     const grid = document.getElementById("grid");
+    const cardView = document.getElementById("cardView");
+    const cardSurface = document.getElementById("cardSurface");
+    const viewToggle = document.getElementById("viewToggle");
+    const cardPrev = document.getElementById("cardPrev");
+    const cardNext = document.getElementById("cardNext");
     const count = document.getElementById("count");
     const countLabel = document.getElementById("countLabel");
     function esc(s){return String(s||"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\\"":"&quot;","'":"&#39;"}[c]));}
+    let viewMode = localStorage.getItem("mudae_album_view") || "grid";
+    let cardIndex = 0;
+
     function setLang(next){
       if(!I18N[next]) return;
       LANG = next;
@@ -654,12 +800,71 @@ function buildExportIndexHtml(title, stickersMeta) {
       document.documentElement.lang = LANG;
       langSel.value = LANG;
       q.placeholder = I18N[LANG].search;
+      updateViewToggle();
       render();
     }
-    function render(){
+
+    function updateViewToggle(){
+      viewToggle.title = I18N[LANG].viewToggleTitle;
+      viewToggle.textContent = viewMode === "grid" ? I18N[LANG].viewCard : I18N[LANG].viewGrid;
+    }
+
+    function getItems(){
       const term = (q.value||"").trim().toLowerCase();
       const parts = term ? term.split(/\\s+/g).filter(Boolean) : [];
-      const items = !parts.length ? STICKERS : STICKERS.filter(s => parts.every(p => (s.name_lc||"").includes(p)));
+      return !parts.length ? STICKERS : STICKERS.filter(s => parts.every(p => (s.name_lc||"").includes(p)));
+    }
+
+    function renderCard(){
+      const items = getItems();
+      count.textContent = String(items.length);
+      countLabel.textContent = I18N[LANG].countLabel;
+      if(!items.length){ cardSurface.innerHTML=""; return; }
+      if(cardIndex<0) cardIndex=0;
+      if(cardIndex>=items.length) cardIndex=items.length-1;
+      const s = items[cardIndex];
+      cardSurface.innerHTML = \`
+        <div class="cardHero">
+          <div class="cardTapZone" id="cardTapZone">
+            <div data-dir="-1"></div>
+            <div data-dir="1"></div>
+          </div>
+          <img loading="eager" referrerpolicy="no-referrer" alt="\${esc(s.name)}" src="\${esc(s.local_path)}" />
+        </div>
+        <div class="cardFooter">
+          <a class="cardTitle nameLink" href="\${esc(s.local_path)}" target="_blank" rel="noreferrer" title="\${esc(s.name)}">\${esc(s.name)}</a>
+          <div class="iconBar">
+            <a class="iconLink" href="\${esc(s.local_path)}" download="\${esc(s.filename)}" title="\${I18N[LANG].downloadTitle}">💾</a>
+            <a class="iconLink" href="https://www.google.com/search?q=\${encodeURIComponent(s.name)}" target="_blank" rel="noreferrer" title="\${I18N[LANG].googleSearchTitle}">🔎</a>
+          </div>
+        </div>\`;
+      const tap = document.getElementById("cardTapZone");
+      if(tap){
+        tap.onclick = (e) => {
+          const dir = e.target && e.target.dataset ? Number(e.target.dataset.dir) : 0;
+          if(dir===1) { cardIndex=Math.min(cardIndex+1, items.length-1); renderCard(); }
+          if(dir===-1){ cardIndex=Math.max(cardIndex-1, 0); renderCard(); }
+        };
+      }
+    }
+
+    function setView(next){
+      viewMode = next==="card" ? "card" : "grid";
+      localStorage.setItem("mudae_album_view", viewMode);
+      updateViewToggle();
+      if(viewMode==="card"){
+        grid.style.display="none";
+        cardView.hidden=false;
+        cardIndex=0;
+        renderCard();
+      }else{
+        grid.style.display="";
+        cardView.hidden=true;
+        render();
+      }
+    }
+    function render(){
+      const items = getItems();
       count.textContent = String(items.length);
       countLabel.textContent = I18N[LANG].countLabel;
       grid.innerHTML = "";
@@ -684,10 +889,19 @@ function buildExportIndexHtml(title, stickersMeta) {
       }
       grid.appendChild(frag);
     }
-    q.addEventListener("input", render);
+    q.addEventListener("input", () => { if(viewMode==="card") renderCard(); else render(); });
     langSel.addEventListener("change", () => setLang(langSel.value));
+    viewToggle.addEventListener("click", () => setView(viewMode==="grid" ? "card" : "grid"));
+    cardPrev.addEventListener("click", () => { if(viewMode!=="card") return; const items=getItems(); cardIndex=Math.max(cardIndex-1,0); renderCard(); });
+    cardNext.addEventListener("click", () => { if(viewMode!=="card") return; const items=getItems(); cardIndex=Math.min(cardIndex+1,items.length-1); renderCard(); });
+    document.addEventListener("keydown", (e) => {
+      if(viewMode!=="card") return;
+      if(e.key==="ArrowRight"){ const items=getItems(); cardIndex=Math.min(cardIndex+1,items.length-1); renderCard(); }
+      if(e.key==="ArrowLeft"){ cardIndex=Math.max(cardIndex-1,0); renderCard(); }
+    });
     setLang(LANG);
-    render();
+    setView(viewMode);
+    if(viewMode==="grid") render();
   </script>
 </body>
 </html>`;
@@ -827,11 +1041,13 @@ function closePasteModal() {
 // ---- UI events ----
 
 const debouncedRenderFiltered = debounce(() => {
-  renderFiltered().catch(() => {});
+  if (viewMode === "card") renderCard().catch(() => {});
+  else renderFiltered().catch(() => {});
 }, SEARCH_DEBOUNCE_MS);
 
 els.lang.addEventListener("change", () => setLang(els.lang.value));
 els.q.addEventListener("input", debouncedRenderFiltered);
+els.viewToggle.addEventListener("click", () => setViewMode(viewMode === "grid" ? "card" : "grid"));
 els.exportAlbum.addEventListener("click", () => exportAlbumZip());
 els.pasteBtn.addEventListener("click", () => openPasteModal());
 
@@ -847,6 +1063,14 @@ document.addEventListener("click", (e) => {
   downloadAsFile(href, name).catch((err) => {
     console.warn("Download failed", err);
   });
+});
+
+els.cardPrev.addEventListener("click", () => prevCard());
+els.cardNext.addEventListener("click", () => nextCard());
+document.addEventListener("keydown", (e) => {
+  if (viewMode !== "card") return;
+  if (e.key === "ArrowRight") nextCard();
+  if (e.key === "ArrowLeft") prevCard();
 });
 
 els.pasteClose.addEventListener("click", () => closePasteModal());
@@ -875,6 +1099,7 @@ els.pasteLoad.addEventListener("click", async () => {
 
 // Init
 setLang(LANG);
+setViewMode("grid");
 // Auto-restore last pasted text (if any) on reload
 (() => {
   const saved = localStorage.getItem(LAST_PASTE_KEY);

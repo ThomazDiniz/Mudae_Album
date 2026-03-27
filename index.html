@@ -25,6 +25,7 @@
 
           <input id="q" class="search" type="search" autocomplete="off" />
 
+          <button id="viewToggle" class="btn" type="button"></button>
           <button id="exportAlbum" class="btn" type="button"></button>
 
           <span id="status" class="status" aria-live="polite"></span>
@@ -41,6 +42,13 @@
       </section>
 
       <div class="grid" id="grid"></div>
+      <section id="cardView" class="cardView" hidden>
+        <div class="cardStage" id="cardStage" aria-label="Card viewer">
+          <button class="cardNav left" id="cardPrev" type="button" aria-label="Previous">◀</button>
+          <button class="cardNav right" id="cardNext" type="button" aria-label="Next">▶</button>
+          <div class="cardSurface" id="cardSurface"></div>
+        </div>
+      </section>
     </main>
 
     <div class="modalOverlay" id="pasteModal" hidden>
