@@ -267,22 +267,11 @@ function escapeRegExp(s) {
 // ---- App state ----
 
 let stickers = [];
-const IMAGE_BLOB_CACHE = new Map(); // url -> Blob (LRU-ish)
-const IMAGE_OBJECT_URL_CACHE = new Map(); // url -> objectURL
-const IMAGE_INFLIGHT_CACHE = new Map(); // url -> Promise<Blob>
-const RESOLVED_URL_CACHE = new Map(); // url -> resolvedUrl
-const RESOLVE_INFLIGHT_CACHE = new Map(); // url -> Promise<string>
-// Cache policy: keep everything in memory for this session (no eviction).
-const IMAGE_CACHE_MAX_ITEMS = Number.POSITIVE_INFINITY;
-const THUMB_FETCH_CONCURRENCY = 6;
 const RESOLVE_CONCURRENCY = 8;
 const EXPORT_FETCH_CONCURRENCY = 6;
 const SEARCH_DEBOUNCE_MS = 120;
-const GRID_BATCH_SIZE = 240;
+const GRID_BATCH_SIZE = 500;
 
-let thumbObserver = null;
-let thumbQueue = [];
-let thumbActive = 0;
 let currentRenderLimit = GRID_BATCH_SIZE;
 let lastFilterKey = "";
 let loadMoreObserver = null;
@@ -320,123 +309,10 @@ function normalizeQuery(q) {
   return (q || "").trim().toLowerCase();
 }
 
-function putImageBlobCache(url, blob) {
-  if (!url || !blob) return;
-  IMAGE_BLOB_CACHE.set(url, blob);
-}
-
-function getObjectUrlForBlob(url, blob) {
-  if (IMAGE_OBJECT_URL_CACHE.has(url)) return IMAGE_OBJECT_URL_CACHE.get(url);
-  const obj = URL.createObjectURL(blob);
-  IMAGE_OBJECT_URL_CACHE.set(url, obj);
-  return obj;
-}
-
-function clearObjectUrlCache() {
-  // Intentionally do not revoke object URLs during the session.
-  IMAGE_OBJECT_URL_CACHE.clear();
-}
-
-function clearAllImageCaches() {
-  clearObjectUrlCache();
-  IMAGE_BLOB_CACHE.clear();
-  IMAGE_INFLIGHT_CACHE.clear();
-  RESOLVED_URL_CACHE.clear();
-  RESOLVE_INFLIGHT_CACHE.clear();
-  thumbQueue = [];
-  thumbActive = 0;
-}
-
-function ensureThumbObserver() {
-  if (thumbObserver || typeof IntersectionObserver === "undefined") return;
-  thumbObserver = new IntersectionObserver(
-    (entries) => {
-      for (const entry of entries) {
-        if (!entry.isIntersecting) continue;
-        const el = entry.target;
-        thumbObserver.unobserve(el);
-        enqueueThumbHydration(el);
-      }
-    },
-    { root: null, rootMargin: "300px 0px", threshold: 0.01 }
-  );
-}
-
-function enqueueThumbHydration(thumbEl) {
-  if (!thumbEl || thumbEl.dataset.hydrated === "1" || thumbEl.dataset.enqueued === "1") return;
-  thumbEl.dataset.enqueued = "1";
-  thumbQueue.push(thumbEl);
-  pumpThumbQueue();
-}
-
-function pumpThumbQueue() {
-  while (thumbActive < THUMB_FETCH_CONCURRENCY && thumbQueue.length > 0) {
-    const el = thumbQueue.shift();
-    thumbActive++;
-    hydrateThumbElement(el)
-      .catch(() => {})
-      .finally(() => {
-        thumbActive--;
-        pumpThumbQueue();
-      });
-  }
-}
-
-async function hydrateThumbElement(thumbEl) {
-  if (!thumbEl || thumbEl.dataset.hydrated === "1") return;
-  const originalUrl = thumbEl.dataset.imgUrl || "";
-  const imgAlt = thumbEl.dataset.imgAlt || "";
-  if (!originalUrl) return;
-  try {
-    const imgUrl = await resolveForDisplay(originalUrl);
-    // Keep the resolved url so later steps (like export) can reuse if needed.
-    thumbEl.dataset.imgUrl = imgUrl;
-    const stickerId = thumbEl.dataset.stickerId || "";
-    if (stickerId) {
-      const s = stickers.find((x) => x._id === stickerId);
-      if (s) s.resolvedUrl = imgUrl;
-    }
-    const card = thumbEl.closest(".card");
-    if (card) {
-      const opens = card.querySelectorAll('a[data-role="open"]');
-      const aDl = card.querySelector('a[data-role="download"]');
-      for (const a of opens) a.href = imgUrl;
-      if (aDl) aDl.href = imgUrl;
-    }
-    const blob = await fetchBlob(imgUrl);
-    const img = document.createElement("img");
-    img.loading = "lazy";
-    img.alt = imgAlt;
-    img.referrerPolicy = "no-referrer";
-    img.src = getObjectUrlForBlob(imgUrl, blob);
-    thumbEl.innerHTML = "";
-    thumbEl.appendChild(img);
-    thumbEl.dataset.hydrated = "1";
-  } catch {
-    // keep placeholder
-  } finally {
-    thumbEl.dataset.enqueued = "0";
-  }
-}
-
 async function resolveForDisplay(url) {
   const u = String(url || "").trim();
   if (!u) return u;
-  const cached = RESOLVED_URL_CACHE.get(u);
-  if (cached) return cached;
-  const inFlight = RESOLVE_INFLIGHT_CACHE.get(u);
-  if (inFlight) return inFlight;
-  const p = (async () => {
-    try {
-      const resolved = await resolveImageUrl(u);
-      RESOLVED_URL_CACHE.set(u, resolved);
-      return resolved;
-    } finally {
-      RESOLVE_INFLIGHT_CACHE.delete(u);
-    }
-  })();
-  RESOLVE_INFLIGHT_CACHE.set(u, p);
-  return p;
+  return await resolveImageUrl(u);
 }
 
 // ---- Rendering ----
@@ -466,7 +342,7 @@ async function renderFiltered() {
 
   els.grid.innerHTML = "";
   const frag = document.createDocumentFragment();
-  const thumbsToObserve = [];
+  const imgsToWire = [];
 
   // Render quickly with placeholders; hydrate thumbs async
   for (const s of visible) {
@@ -474,8 +350,8 @@ async function renderFiltered() {
     card.className = "card";
     card.innerHTML = `
       <a class="thumbLink" data-role="open" href="${escHtml(s.resolvedUrl || s.sourceUrl)}" target="_blank" rel="noreferrer">
-        <div class="thumb" data-sticker-id="${escHtml(s._id)}" data-img-url="${escHtml(s.resolvedUrl || s.sourceUrl)}" data-img-alt="${escHtml(s.name)}" data-hydrated="0">
-          <div class="ph">...</div>
+        <div class="thumb" data-sticker-id="${escHtml(s._id)}" data-img-url="${escHtml(s.resolvedUrl || s.sourceUrl)}" data-img-alt="${escHtml(s.name)}">
+          <img class="thumbImg" loading="lazy" referrerpolicy="no-referrer" alt="${escHtml(s.name)}" src="${escHtml(s.resolvedUrl || s.sourceUrl)}" />
         </div>
       </a>
       <div class="meta">
@@ -489,11 +365,8 @@ async function renderFiltered() {
       </div>
     `;
     frag.appendChild(card);
-    const thumb = card.querySelector(".thumb");
-    if (thumb) {
-      // Observe only after DOM insertion (some browsers don't trigger IO for detached nodes).
-      thumbsToObserve.push(thumb);
-    }
+    const img = card.querySelector("img.thumbImg");
+    if (img) imgsToWire.push(img);
   }
 
   // Infinite scroll sentinel
@@ -505,10 +378,35 @@ async function renderFiltered() {
 
   els.grid.appendChild(frag);
 
-  // Start thumb hydration after insertion into the DOM.
-  for (const thumb of thumbsToObserve) {
-    if (thumbObserver) thumbObserver.observe(thumb);
-    else enqueueThumbHydration(thumb);
+  // If an image fails (e.g. imgur.com page), resolve to direct image URL and retry once.
+  for (const img of imgsToWire) {
+    img.addEventListener(
+      "error",
+      async () => {
+        if (img.dataset.resolvedOnce === "1") return;
+        img.dataset.resolvedOnce = "1";
+        const thumb = img.closest(".thumb");
+        const originalUrl = thumb ? (thumb.dataset.imgUrl || img.src) : img.src;
+        const stickerId = thumb ? (thumb.dataset.stickerId || "") : "";
+        const resolved = await resolveForDisplay(originalUrl);
+        if (resolved && resolved !== img.src) {
+          if (thumb) thumb.dataset.imgUrl = resolved;
+          if (stickerId) {
+            const s = stickers.find((x) => x._id === stickerId);
+            if (s) s.resolvedUrl = resolved;
+          }
+          const card = img.closest(".card");
+          if (card) {
+            const opens = card.querySelectorAll('a[data-role="open"]');
+            const aDl = card.querySelector('a[data-role="download"]');
+            for (const a of opens) a.href = resolved;
+            if (aDl) aDl.href = resolved;
+          }
+          img.src = resolved;
+        }
+      },
+      { once: true }
+    );
   }
 
   // Observe the sentinel and load more when near bottom.
@@ -567,29 +465,14 @@ function shortStableHash(input) {
 }
 
 async function fetchBlob(url) {
-  const cached = IMAGE_BLOB_CACHE.get(url);
-  if (cached) return cached;
-  const inFlight = IMAGE_INFLIGHT_CACHE.get(url);
-  if (inFlight) return inFlight;
-
-  const p = (async () => {
-    const resp = await fetch(url, { cache: "force-cache", referrerPolicy: "no-referrer" });
-    if (!resp.ok) throw new Error(`HTTP ${resp.status} ${url}`);
-    const blob = await resp.blob();
-    // Guard: if we accidentally fetched HTML (e.g., Imgur page), don't treat it as an image.
-    if (blob.type && !blob.type.startsWith("image/")) {
-      throw new Error(`Non-image content-type: ${blob.type} (${url})`);
-    }
-    putImageBlobCache(url, blob);
-    return blob;
-  })();
-
-  IMAGE_INFLIGHT_CACHE.set(url, p);
-  try {
-    return await p;
-  } finally {
-    IMAGE_INFLIGHT_CACHE.delete(url);
+  const resp = await fetch(url, { referrerPolicy: "no-referrer" });
+  if (!resp.ok) throw new Error(`HTTP ${resp.status} ${url}`);
+  const blob = await resp.blob();
+  // Guard: if we accidentally fetched HTML (e.g., Imgur page), don't treat it as an image.
+  if (blob.type && !blob.type.startsWith("image/")) {
+    throw new Error(`Non-image content-type: ${blob.type} (${url})`);
   }
+  return blob;
 }
 
 function guessExtFromUrl(url) {
@@ -907,7 +790,6 @@ async function resolveAll() {
 // ---- File loading ----
 
 async function loadFromText(text) {
-  // Do not clear caches on import: once loaded, keep in memory for the session.
   const source = new MudaeTxtSource(text || "");
   const loaded = await source.load();
 
@@ -991,7 +873,6 @@ els.pasteLoad.addEventListener("click", async () => {
 });
 
 // Init
-ensureThumbObserver();
 setLang(LANG);
 // Auto-restore last pasted text (if any) on reload
 (() => {
