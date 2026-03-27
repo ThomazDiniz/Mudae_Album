@@ -150,6 +150,7 @@ function setLang(next) {
 
 let viewMode = "grid"; // "grid" | "card"
 let cardIndex = 0;
+let isCardAnimating = false;
 
 function updateViewToggleLabel() {
   if (!els.viewToggle) return;
@@ -261,15 +262,37 @@ async function renderCard() {
 function nextCard() {
   const items = getFilteredItems();
   if (!items.length) return;
-  cardIndex = Math.min(cardIndex + 1, items.length - 1);
-  renderCard().catch(() => {});
+  if (isCardAnimating) return;
+  if (cardIndex >= items.length - 1) return;
+  isCardAnimating = true;
+  els.cardStage.classList.add("anim-next");
+  setTimeout(() => {
+    cardIndex = Math.min(cardIndex + 1, items.length - 1);
+    renderCard()
+      .catch(() => {})
+      .finally(() => {
+        els.cardStage.classList.remove("anim-next");
+        isCardAnimating = false;
+      });
+  }, 260);
 }
 
 function prevCard() {
   const items = getFilteredItems();
   if (!items.length) return;
-  cardIndex = Math.max(cardIndex - 1, 0);
-  renderCard().catch(() => {});
+  if (isCardAnimating) return;
+  if (cardIndex <= 0) return;
+  isCardAnimating = true;
+  els.cardStage.classList.add("anim-prev");
+  setTimeout(() => {
+    cardIndex = Math.max(cardIndex - 1, 0);
+    renderCard()
+      .catch(() => {})
+      .finally(() => {
+        els.cardStage.classList.remove("anim-prev");
+        isCardAnimating = false;
+      });
+  }, 260);
 }
 
 // ---- Source architecture (future-proof) ----
@@ -760,6 +783,12 @@ function buildExportIndexHtml(title, stickersMeta) {
     .cardPane.is-left{transform:translateX(-74%) rotateY(26deg) scale(0.86);opacity:.55;filter:blur(0.2px);}
     .cardPane.is-center{transform:translateX(0) rotateY(0) scale(1);opacity:1;}
     .cardPane.is-right{transform:translateX(74%) rotateY(-26deg) scale(0.86);opacity:.55;filter:blur(0.2px);}
+    .cardStage.anim-next .cardPane.is-left{transform:translateX(-120%) rotateY(35deg) scale(0.84);opacity:0;}
+    .cardStage.anim-next .cardPane.is-center{transform:translateX(-74%) rotateY(26deg) scale(0.86);opacity:.55;filter:blur(0.2px);}
+    .cardStage.anim-next .cardPane.is-right{transform:translateX(0) rotateY(0) scale(1);opacity:1;filter:none;}
+    .cardStage.anim-prev .cardPane.is-right{transform:translateX(120%) rotateY(-35deg) scale(0.84);opacity:0;}
+    .cardStage.anim-prev .cardPane.is-center{transform:translateX(74%) rotateY(-26deg) scale(0.86);opacity:.55;filter:blur(0.2px);}
+    .cardStage.anim-prev .cardPane.is-left{transform:translateX(0) rotateY(0) scale(1);opacity:1;filter:none;}
     .cardHero{position:relative;overflow:hidden;background:rgba(0,0,0,.25);}
     .cardHero img{width:100%;height:100%;object-fit:contain;display:block;background:rgba(0,0,0,.35);}
     .cardFooter{padding:12px 12px 14px;border-top:1px solid rgba(36,50,74,.6);display:flex;justify-content:center;align-items:center;gap:10px;}
@@ -851,6 +880,7 @@ function buildExportIndexHtml(title, stickersMeta) {
       return !parts.length ? STICKERS : STICKERS.filter(s => parts.every(p => (s.name_lc||"").includes(p)));
     }
 
+    let isAnimating = false;
     function renderCard(){
       const items = getItems();
       if(items.length){
@@ -949,12 +979,40 @@ function buildExportIndexHtml(title, stickersMeta) {
     q.addEventListener("input", () => { if(viewMode==="card") renderCard(); else render(); });
     langSel.addEventListener("change", () => setLang(langSel.value));
     viewToggle.addEventListener("click", () => setView(viewMode==="grid" ? "card" : "grid"));
-    cardPrev.addEventListener("click", () => { if(viewMode!=="card") return; const items=getItems(); cardIndex=Math.max(cardIndex-1,0); renderCard(); });
-    cardNext.addEventListener("click", () => { if(viewMode!=="card") return; const items=getItems(); cardIndex=Math.min(cardIndex+1,items.length-1); renderCard(); });
+    function nextStep(){
+      if(viewMode!=="card") return;
+      const items=getItems();
+      if(isAnimating) return;
+      if(cardIndex>=items.length-1) return;
+      isAnimating=true;
+      document.getElementById("cardStage").classList.add("anim-next");
+      setTimeout(() => {
+        cardIndex=Math.min(cardIndex+1,items.length-1);
+        renderCard();
+        document.getElementById("cardStage").classList.remove("anim-next");
+        isAnimating=false;
+      }, 260);
+    }
+    function prevStep(){
+      if(viewMode!=="card") return;
+      const items=getItems();
+      if(isAnimating) return;
+      if(cardIndex<=0) return;
+      isAnimating=true;
+      document.getElementById("cardStage").classList.add("anim-prev");
+      setTimeout(() => {
+        cardIndex=Math.max(cardIndex-1,0);
+        renderCard();
+        document.getElementById("cardStage").classList.remove("anim-prev");
+        isAnimating=false;
+      }, 260);
+    }
+    cardPrev.addEventListener("click", prevStep);
+    cardNext.addEventListener("click", nextStep);
     document.addEventListener("keydown", (e) => {
       if(viewMode!=="card") return;
-      if(e.key==="ArrowRight"){ const items=getItems(); cardIndex=Math.min(cardIndex+1,items.length-1); renderCard(); }
-      if(e.key==="ArrowLeft"){ cardIndex=Math.max(cardIndex-1,0); renderCard(); }
+      if(e.key==="ArrowRight"){ nextStep(); }
+      if(e.key==="ArrowLeft"){ prevStep(); }
     });
     setLang(LANG);
     setView(viewMode);

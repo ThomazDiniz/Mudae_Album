@@ -173,6 +173,15 @@ input[type="file"]{ display:none; }
   transform: translateX(120%) rotateY(-35deg) scale(0.84);
   opacity: 0;
 }
+
+/* Deck transition (tinder-like step) */
+.cardStage.anim-next .cardPane.is-left{ transform: translateX(-120%) rotateY(35deg) scale(0.84); opacity:0; }
+.cardStage.anim-next .cardPane.is-center{ transform: translateX(-74%) rotateY(26deg) scale(0.86); opacity:.55; filter: blur(0.2px); }
+.cardStage.anim-next .cardPane.is-right{ transform: translateX(0) rotateY(0deg) scale(1); opacity:1; filter:none; }
+
+.cardStage.anim-prev .cardPane.is-right{ transform: translateX(120%) rotateY(-35deg) scale(0.84); opacity:0; }
+.cardStage.anim-prev .cardPane.is-center{ transform: translateX(74%) rotateY(-26deg) scale(0.86); opacity:.55; filter: blur(0.2px); }
+.cardStage.anim-prev .cardPane.is-left{ transform: translateX(0) rotateY(0deg) scale(1); opacity:1; filter:none; }
 .cardHero{
   position:relative;
   overflow:hidden;
